@@ -8,6 +8,9 @@ const VOTALUME_CONFIG = {
   SITE_NAME: "Votalume",
   SITE_TAGLINE: "Shining Light on the Vote",
   VERSION: "3.4.0",
+  AUTHOR: "GrayRoseCreations",
+  GITHUB_REPO: "https://github.com/GrayRoseCreations/votalume",
+  GITHUB_PROFILE: "https://github.com/GrayRoseCreations",
 
   // Google Sheets Master Database
   SPREADSHEET_ID: "1gcU-CVHfysi37Vtp_aDf6qOUFGUnfrpXpfNDTXBNgaM",

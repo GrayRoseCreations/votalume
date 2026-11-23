@@ -1,6 +1,7 @@
 # Votalume — Shining Light on the Vote
 ### Official, Nonpartisan Civic Legislative Accountability Platform
-Zero-Build Architecture for GitHub Pages • United States Congress (119th & Post-Jan 2027 120th Sessions)
+Zero-Build Architecture for GitHub Pages • United States Congress (119th & Post-Jan 2027 120th Sessions)  
+Developed by **[GrayRoseCreations](https://github.com/GrayRoseCreations)** • [GitHub Repository](https://github.com/GrayRoseCreations/votalume) • [Live Portal](https://grayrosecreations.github.io/votalume/)
 
 ---
 
@@ -141,5 +142,12 @@ service cloud.firestore {
 2. Navigate to your repository's **Settings → Pages**.
 3. Under **Build and deployment**, select **Source: Deploy from a branch** and set branch to `main` / `root`.
 4. Click **Save**. The website will be live at `https://grayrosecreations.github.io/votalume/`.
+
+---
+
+## 📄 License & Attribution
+
+Designed and maintained by [GrayRoseCreations](https://github.com/GrayRoseCreations).  
+Source Repository: [https://github.com/GrayRoseCreations/votalume](https://github.com/GrayRoseCreations/votalume)
 
 *Official Data Attributions: Library of Congress (`Congress.gov`), Office of the Clerk (`clerk.house.gov`), Secretary of the Senate (`senate.gov`), Congressional Budget Office (`CBO.gov`), Joint Committee on Taxation (`JCT.gov`), Federal Election Commission (`FEC.gov`), and Congressional Bioguide.*
