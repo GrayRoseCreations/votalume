@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Votalume — Shining Light on the Vote | Nonpartisan Civic Legislative Accountability</title>
+  <meta name="description" content="Official, nonpartisan civic legislative accountability platform tracking Congressional roll calls, composite policy indices, attendance drop-offs, and financial sector overlaps." />
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:ital,wght@0,400;0,700;0,900;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+
+  <!-- CDN Dependencies -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+  <!-- Top Civic Notice -->
+  <div class="top-notice-bar">
+    <div class="top-notice-text">
+      <span class="top-notice-badge">Official Record</span>
+      <span>Nonpartisan Civic Legislative Reference • United States Congress</span>
+    </div>
+  </div>
+
+  <!-- Cache / Offline Notice Banner -->
+  <div id="cache-notice-banner" class="cache-notice-banner">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="12" y1="8" x2="12" y2="12"></line>
+      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+    </svg>
+    <span>Showing cached civic database. Master Google Sheet sync in progress.</span>
+  </div>
+
+  <!-- Persistent Header -->
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="index.html" class="brand-wrapper" aria-label="Votalume Home">
+        <div class="brand-torch-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 2L15 8H9L12 2Z" fill="#FFF"/>
+            <path d="M8 9H16L15 15H9L8 9Z" fill="#FFF"/>
+            <path d="M10 16H14L13 22H11L10 16Z" fill="#FFF"/>
+          </svg>
+        </div>
+        <div class="brand-titles">
+          <span class="brand-name">Votalume</span>
+          <span class="brand-tagline">Shining Light on the Vote</span>
+        </div>
+      </a>
+
+      <button class="mobile-nav-toggle" aria-label="Toggle Navigation Menu">☰</button>
+
+      <nav class="primary-nav">
+        <a href="lawmakers.html" class="nav-link">Lawmakers</a>
+        <a href="bills.html" class="nav-link">Bills & Votes</a>
+        <a href="parties.html" class="nav-link">Parties</a>
+        <a href="compare.html" class="nav-link">Compare</a>
+        <a href="quiz.html" class="nav-link">Alignment Quiz</a>
+        <a href="guide.html" class="nav-link">Tags & Methodology</a>
+      </nav>
+
+      <div class="header-actions">
+        <button id="header-search-btn" class="btn-header-search" aria-label="Search Congress">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <span>Search</span>
+          <kbd>⌘K</kbd>
+        </button>
+
+        <a href="guide.html#health" id="header-live-sync-badge" class="live-sync-indicator" title="Live sync status from official records">
+          <span class="sync-pulse"></span> Live Sync
+        </a>
+
+        <button id="header-user-auth-btn" class="btn-user-auth">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          <span>Sign In / Profile</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <div class="container">
+      
+      <!-- Hero Section -->
+      <section class="hero-section">
+        <div class="hero-content">
+          <div class="hero-subtitle-badge">Independent Legislative Accountability</div>
+          <h1 class="hero-title">Shining clear light on every roll call, sponsor, and shift in Congress.</h1>
+          <p class="hero-lead">
+            Votalume provides rigorous, nonpartisan analysis of federal legislation. From career attendance and post-election lame-duck drop-offs to composite voter indices and donor sector overlap, explore unvarnished accountability for every Member of the House and Senate.
+          </p>
+        </div>
+      </section>
+
+      <!-- Live Stats Strip -->
+      <section class="stats-strip" aria-label="Congressional Database Summary">
+        <div class="stat-item">
+          <span class="stat-label">Active Session</span>
+          <span id="stat-active-session" class="stat-value">119th</span>
+          <span class="stat-sub">U.S. Congress (2nd Session)</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Bills Analyzed</span>
+          <span id="stat-bills-count" class="stat-value">6</span>
+          <span class="stat-sub">Key policy & appropriations</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Roll Calls Logged</span>
+          <span id="stat-votes-count" class="stat-value">6</span>
+          <span class="stat-sub">House & Senate recorded votes</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Database Backfill</span>
+          <span id="stat-backfill-progress" class="stat-value">100%</span>
+          <span class="stat-sub">2025–2026 Archive synchronized</span>
+        </div>
+      </section>
+
+      <!-- Finder & Global Search Box -->
+      <section class="finder-card" aria-label="Congressional Search & District Finder">
+        <div class="finder-tabs" role="tablist">
+          <button id="tab-btn-district" class="finder-tab-btn active" role="tab" aria-selected="true">Find My Delegation (State & District)</button>
+          <button id="tab-btn-search" class="finder-tab-btn" role="tab" aria-selected="false">Instant Global Search</button>
+        </div>
+
+        <!-- Panel 1: State & District Finder -->
+        <div id="panel-district" class="finder-panel" role="tabpanel">
+          <form id="home-district-form" class="district-finder-form">
+            <div class="form-group">
+              <label for="finder-state-select" class="form-label">State</label>
+              <select id="finder-state-select" class="form-select" required>
+                <option value="">Select your State</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="finder-district-select" class="form-label">Congressional District</label>
+              <select id="finder-district-select" class="form-select" disabled>
+                <option value="">Select a State first</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Congressional District Map</label>
+              <select id="finder-era-select" class="form-select">
+                <option value="119th">119th Congress (Current 2025–2026)</option>
+                <option value="120th">120th Congress (Post-Jan 2027 Redistricting)</option>
+              </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="height: 42px;">Look Up Lawmakers</button>
+          </form>
+
+          <!-- Delegation Output Container -->
+          <div id="delegation-output" class="delegation-results-container" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+              <h3 style="font-size: 1.15rem; margin: 0;">Your Federal Representation</h3>
+              <span id="delegation-context-label" class="badge badge-neutral"></span>
+            </div>
+            <div id="delegation-grid" class="delegation-grid">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel 2: Instant Global Search -->
+        <div id="panel-search" class="finder-panel" role="tabpanel" style="display: none;">
+          <div class="search-input-group">
+            <svg class="search-icon-inside" viewBox="0 0 24 24">
+              <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+            </svg>
+            <input type="text" class="input-search-global" placeholder="Search by lawmaker name, state, bill (e.g. H.R. 1), or policy tag..." autocomplete="off" />
+            <div class="search-results-dropdown"></div>
+          </div>
+          <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 0.75rem;">
+            Quick searches: <a href="member.html?id=B001299" class="no-underline"><span class="tag-pill">Jim Banks (Chamber Switch)</span></a> <a href="member.html?id=S001150" class="no-underline"><span class="tag-pill">Adam Schiff</span></a> <a href="bill.html?id=H-119-01-084" class="no-underline"><span class="tag-pill">H.R. 1 Lower Energy Costs</span></a> <a href="parties.html" class="no-underline"><span class="tag-pill">Party Unity Gauges</span></a>
+          </div>
+        </div>
+      </section>
+
+      <!-- Featured Legislative Highlights -->
+      <section style="margin-bottom: 3rem;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.5rem;">
+          <div>
+            <h2>Continuous Career Accountability</h2>
+            <p style="color: var(--color-text-muted); font-size: 0.9rem;">
+              Members switching between the House and Senate maintain unified, cross-chamber voting histories with zero false absence gaps.
+            </p>
+          </div>
+          <a href="lawmakers.html" class="btn btn-secondary btn-sm">View All Lawmakers →</a>
+        </div>
+
+        <div id="featured-lawmakers-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem;">
+          <!-- Populated via JS -->
+        </div>
+      </section>
+
+      <!-- Key Roll Calls Spotlight -->
+      <section style="margin-bottom: 3rem;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.5rem;">
+          <div>
+            <h2>Recent Landmark Roll Calls</h2>
+            <p style="color: var(--color-text-muted); font-size: 0.9rem;">
+              Decisive policy passages, appropriations packages, and cross-party consensus roll calls.
+            </p>
+          </div>
+          <a href="bills.html" class="btn btn-secondary btn-sm">Explore All Bills →</a>
+        </div>
+
+        <div id="featured-bills-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 1.5rem;">
+          <!-- Populated via JS -->
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Persistent Nonpartisan Footer -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <h4>Votalume — Shining Light on the Vote</h4>
+          <p>
+            An independent, nonpartisan civic platform dedicated to illuminating legislative actions in the United States Congress. We do not endorse candidates, parties, or legislation.
+          </p>
+          <div class="footer-data-sources">
+            <a href="https://www.congress.gov" class="source-badge" target="_blank" rel="noopener">Congress.gov</a>
+            <a href="https://clerk.house.gov" class="source-badge" target="_blank" rel="noopener">clerk.house.gov</a>
+            <a href="https://www.senate.gov" class="source-badge" target="_blank" rel="noopener">senate.gov</a>
+            <a href="https://www.cbo.gov" class="source-badge" target="_blank" rel="noopener">CBO.gov</a>
+            <a href="https://www.jct.gov" class="source-badge" target="_blank" rel="noopener">JCT.gov</a>
+            <a href="https://www.fec.gov" class="source-badge" target="_blank" rel="noopener">FEC.gov</a>
+            <a href="https://bioguide.congress.gov" class="source-badge" target="_blank" rel="noopener">Bioguide / @unitedstates</a>
+          </div>
+        </div>
+
+        <div class="footer-col">
+          <h4>Exploration</h4>
+          <ul>
+            <li><a href="lawmakers.html">Congressional Lawmakers</a></li>
+            <li><a href="bills.html">Bills & Roll Calls</a></li>
+            <li><a href="parties.html">Party Caucus Analysis</a></li>
+            <li><a href="compare.html">Compare Lawmakers</a></li>
+            <li><a href="quiz.html">Civic Alignment Quiz</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Methodology</h4>
+          <ul>
+            <li><a href="guide.html">73-Tag Taxonomy Guide</a></li>
+            <li><a href="guide.html#indices">6 Composite Indices Formula</a></li>
+            <li><a href="guide.html#attendance">Lame-Duck Attendance Rules</a></li>
+            <li><a href="guide.html#financial">Financial Disclosures Neutrality</a></li>
+            <li><a href="guide.html#changelog">Data Changelog & Health</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Accountability</h4>
+          <p style="margin-bottom: 0.75rem;">
+            Notice a data discrepancy or missing roll-call record? Help us preserve absolute civic accuracy.
+          </p>
+          <button class="btn btn-secondary btn-sm trigger-discrepancy-modal" style="width: 100%;">
+            Report a Data Discrepancy
+          </button>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>
+          © 2026 Votalume Civic Project. Public domain Congressional portraits curated via <code>@unitedstates</code> / Bioguide.
+        </div>
+        <div>
+          <a href="guide.html#disclaimer">Nonpartisan Policy</a> • 
+          <a href="guide.html#privacy">Privacy & Local Storage</a> • 
+          <a href="guide.html#changelog">System Health</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Global Search Modal (⌘K / Ctrl+K) -->
+  <div id="global-search-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-search-heading">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="modal-search-heading">Search Congress</h3>
+        <button class="modal-close-btn" aria-label="Close search modal">×</button>
+      </div>
+      <div class="modal-body" style="padding: 1rem 1.5rem 0.5rem 1.5rem;">
+        <div class="search-input-group">
+          <svg class="search-icon-inside" viewBox="0 0 24 24">
+            <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+          </svg>
+          <input type="text" id="modal-search-input" class="input-search-global" placeholder="Search Representatives, Senators, Bills (e.g. H.R. 1), or Tags..." />
+        </div>
+      </div>
+      <div id="modal-search-results" class="modal-body" style="max-height: 380px; padding: 0.5rem 1.5rem 1.5rem 1.5rem;"></div>
+    </div>
+  </div>
+
+  <!-- User Auth / Profile Modal -->
+  <div id="auth-profile-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="auth-modal-title">Sign In / Profile</h3>
+        <button class="modal-close-btn" aria-label="Close authentication modal">×</button>
+      </div>
+      <div id="auth-modal-body" class="modal-body">
+        <!-- Rendered via js/ui.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Report Data Discrepancy Modal -->
+  <div id="discrepancy-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="discrepancy-modal-title">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="discrepancy-modal-title">Report a Data Discrepancy</h3>
+        <button class="modal-close-btn" aria-label="Close modal">×</button>
+      </div>
+      <form id="discrepancy-form">
+        <div class="modal-body">
+          <p style="font-size: 0.85rem; color: var(--color-text-secondary); margin-bottom: 1rem;">
+            All roll-call data, party-at-vote timestamps, and attendance calculations are checked against official roll-call records from <code>clerk.house.gov</code> and <code>senate.gov</code>.
+          </p>
+          <div class="form-group" style="margin-bottom: 0.75rem;">
+            <label class="form-label">Lawmaker or Roll-Call ID</label>
+            <input type="text" class="form-input" required placeholder="e.g. S001150 or H-119-01-084" />
+          </div>
+          <div class="form-group" style="margin-bottom: 0.75rem;">
+            <label class="form-label">Discrepancy Description & Official Source URL</label>
+            <textarea class="form-input" rows="4" required placeholder="Describe the discrepancy and paste the official government link (Congress.gov or clerk roll call)..."></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Your Email (Optional for audit receipt)</label>
+            <input type="email" class="form-input" placeholder="citizen@example.org" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Submit Report</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/seed-data.js"></script>
+  <script src="js/state-districts.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/index-page.js"></script>
+</body>
+</html>

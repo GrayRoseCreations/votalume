@@ -1,0 +1,203 @@
+/* ==========================================================================
+   VOTALUME — Responsive Layout & Accessibility Styles
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+  .stats-strip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .stat-item:nth-child(2) {
+    border-right: none;
+  }
+  
+  .stat-item:nth-child(3) {
+    border-top: 1px solid var(--color-border);
+    padding-top: 1rem;
+  }
+  
+  .stat-item:nth-child(4) {
+    border-top: 1px solid var(--color-border);
+    padding-top: 1rem;
+    border-right: none;
+  }
+
+  .indices-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .gauges-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .footer-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --header-height: 64px;
+  }
+
+  h1 { font-size: 1.75rem; }
+  h2 { font-size: 1.4rem; }
+  h3 { font-size: 1.15rem; }
+
+  .hero-section {
+    padding: 2rem 1.25rem;
+  }
+
+  .hero-title {
+    font-size: 2rem;
+  }
+
+  .hero-lead {
+    font-size: 1rem;
+  }
+
+  .stats-strip {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+
+  .stat-item {
+    border-right: none !important;
+    border-bottom: 1px solid var(--color-border);
+    padding: 0.5rem 0;
+  }
+
+  .stat-item:last-child {
+    border-bottom: none;
+  }
+
+  .mobile-nav-toggle {
+    display: block;
+  }
+
+  nav.primary-nav {
+    display: none;
+    position: absolute;
+    top: var(--header-height);
+    left: 0;
+    right: 0;
+    background-color: var(--color-civic-navy-dark);
+    flex-direction: column;
+    padding: 1rem;
+    box-shadow: var(--shadow-lg);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  nav.primary-nav.open {
+    display: flex;
+  }
+
+  .nav-link {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+  }
+
+  .district-finder-form {
+    grid-template-columns: 1fr;
+  }
+
+  .delegation-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-header-main {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1.25rem;
+  }
+
+  .profile-name-row {
+    justify-content: center;
+  }
+
+  .profile-career-pills {
+    justify-content: center;
+  }
+
+  .seat-safety-box {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .gauges-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .indices-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .split-presidential-container {
+    grid-template-columns: 1fr;
+  }
+
+  .stock-act-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .footer-grid {
+    grid-template-columns: 1fr;
+    gap: 1.75rem;
+  }
+
+  .footer-bottom {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .modal-dialog {
+    max-height: 95vh;
+    margin: 0.5rem;
+  }
+
+  .quiz-actions {
+    flex-direction: column;
+  }
+}
+
+/* Accessibility & Preferences */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Print Styles */
+@media print {
+  header.site-header,
+  .top-notice-bar,
+  .btn,
+  .finder-tabs,
+  .finder-card,
+  footer.site-footer,
+  .modal-overlay {
+    display: none !important;
+  }
+
+  body {
+    background-color: #FFFFFF;
+    color: #000000;
+  }
+
+  .card, .profile-header-card, .table-scroll-container {
+    box-shadow: none !important;
+    border: 1px solid #000000 !important;
+  }
+
+  .table-sticky-col {
+    position: static !important;
+  }
+}

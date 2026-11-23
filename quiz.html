@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Civic Alignment Quiz — Votalume</title>
+  <meta name="description" content="Blind-to-reveal nonpartisan legislative quiz calculating your alignment against Congress, your local Representatives, and tracking your quarterly political drift over time." />
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:ital,wght@0,400;0,700;0,900;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+
+  <!-- CDN Dependencies -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+  <!-- Top Civic Notice -->
+  <div class="top-notice-bar">
+    <div class="top-notice-text">
+      <span class="top-notice-badge">Official Record</span>
+      <span>Nonpartisan Civic Legislative Reference • United States Congress</span>
+    </div>
+  </div>
+
+  <div id="cache-notice-banner" class="cache-notice-banner">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="12" y1="8" x2="12" y2="12"></line>
+      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+    </svg>
+    <span>Showing cached civic database. Master Google Sheet sync in progress.</span>
+  </div>
+
+  <!-- Persistent Header -->
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="index.html" class="brand-wrapper" aria-label="Votalume Home">
+        <div class="brand-torch-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 2L15 8H9L12 2Z" fill="#FFF"/>
+            <path d="M8 9H16L15 15H9L8 9Z" fill="#FFF"/>
+            <path d="M10 16H14L13 22H11L10 16Z" fill="#FFF"/>
+          </svg>
+        </div>
+        <div class="brand-titles">
+          <span class="brand-name">Votalume</span>
+          <span class="brand-tagline">Shining Light on the Vote</span>
+        </div>
+      </a>
+
+      <button class="mobile-nav-toggle" aria-label="Toggle Navigation Menu">☰</button>
+
+      <nav class="primary-nav">
+        <a href="lawmakers.html" class="nav-link">Lawmakers</a>
+        <a href="bills.html" class="nav-link">Bills & Votes</a>
+        <a href="parties.html" class="nav-link">Parties</a>
+        <a href="compare.html" class="nav-link">Compare</a>
+        <a href="quiz.html" class="nav-link active">Alignment Quiz</a>
+        <a href="guide.html" class="nav-link">Tags & Methodology</a>
+      </nav>
+
+      <div class="header-actions">
+        <button id="header-search-btn" class="btn-header-search" aria-label="Search Congress">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <span>Search</span>
+          <kbd>⌘K</kbd>
+        </button>
+
+        <a href="guide.html#health" id="header-live-sync-badge" class="live-sync-indicator">
+          <span class="sync-pulse"></span> Live Sync
+        </a>
+
+        <button id="header-user-auth-btn" class="btn-user-auth">
+          <span>Sign In / Profile</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="container quiz-container">
+      
+      <!-- Quiz Header -->
+      <div style="text-align: center; margin-bottom: 2rem;">
+        <h1>Blind-to-Reveal Civic Alignment Quiz</h1>
+        <p style="color: var(--color-text-secondary); max-width: 680px; margin: 0 auto; font-size: 1.05rem;">
+          Vote blindly on real legislative questions without party cues, bill titles, or sponsors. Once you vote, the actual Congressional roll call is revealed, comparing your vote directly with your own House Representative and two Senators.
+        </p>
+      </div>
+
+      <!-- Mode & Quarter Selector -->
+      <div class="card" style="margin-bottom: 2rem; padding: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <label class="form-label" style="margin: 0;">Quiz Mode:</label>
+            <select id="quiz-mode-select" class="form-select" style="padding: 0.35rem 0.65rem;">
+              <option value="pulse">This Week in Congress (Pulse Quiz)</option>
+              <option value="full">Full Alignment Match (All Key Bills)</option>
+              <option value="archive">Issue-by-Issue Archive</option>
+            </select>
+          </div>
+
+          <div style="font-size: 0.8rem; color: var(--color-text-muted);">
+            <span class="badge badge-neutral">Quarterly Cooldown Active</span> Responses saved to personal timeline
+          </div>
+        </div>
+      </div>
+
+      <!-- Quiz Stage: Active Question Card -->
+      <div id="quiz-card-stage" class="quiz-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <span id="quiz-progress-badge" class="badge badge-gold">Question 1 of 5</span>
+          <span id="quiz-issue-domain-badge" class="badge badge-neutral">Energy & Environment</span>
+        </div>
+
+        <div style="font-size: 0.825rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted);">
+          Policy Question (Blind Evaluation)
+        </div>
+
+        <h2 id="quiz-question-text" class="quiz-question-text">
+          Loading Question...
+        </h2>
+
+        <!-- Vote Action Buttons -->
+        <div id="quiz-buttons-row" class="quiz-actions">
+          <button id="btn-quiz-yea" class="btn btn-primary btn-quiz-vote" style="background-color: #15803D; border-color: #15803D;">
+            ✓ Vote Yea (In Favor)
+          </button>
+          <button id="btn-quiz-nay" class="btn btn-primary btn-quiz-vote" style="background-color: #B91C1C; border-color: #B91C1C;">
+            ✕ Vote Nay (Opposed)
+          </button>
+        </div>
+
+        <!-- Reveal Box (Initially Hidden) -->
+        <div id="quiz-reveal-box" class="quiz-reveal-box" style="display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <span class="badge badge-gold">Actual Congressional Roll Call Revealed</span>
+            <span id="reveal-user-vote" class="badge"></span>
+          </div>
+
+          <h3 id="reveal-bill-title" style="font-size: 1.25rem; margin-bottom: 0.5rem; color: var(--color-civic-navy);"></h3>
+          <p id="reveal-bill-summary" style="font-size: 0.9rem; color: var(--color-text-secondary); line-height: 1.6; margin-bottom: 1rem;"></p>
+
+          <div style="display: flex; gap: 0.35rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
+            <div id="reveal-tags-list" style="display: flex; gap: 0.35rem; flex-wrap: wrap;"></div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end;">
+            <button id="btn-quiz-next" class="btn btn-primary">Next Question →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quiz Completion & Results Section (Initially Hidden) -->
+      <div id="quiz-results-container" style="display: none;">
+        
+        <div class="card" style="text-align: center; padding: 2.5rem; margin-bottom: 2rem;">
+          <span class="badge badge-gold" style="margin-bottom: 0.5rem;">Alignment Results Complete</span>
+          <h2 style="font-size: 1.85rem; margin-bottom: 1rem;">Your Congressional Alignment Summary</h2>
+          <p style="color: var(--color-text-secondary); max-width: 600px; margin: 0 auto 2rem auto; font-size: 0.95rem;">
+            Based on your votes on actual legislation weighted by economic and constitutional provisions.
+          </p>
+
+          <!-- Caucus Match Bars -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; max-width: 600px; margin: 0 auto 2rem auto;">
+            <div style="border: 1px solid var(--party-dem-border); background: var(--party-dem-bg); padding: 1.5rem; border-radius: var(--radius-lg);">
+              <span class="stat-label" style="color: var(--party-dem);">Democratic Caucus Match</span>
+              <div id="match-dem-pct" style="font-family: var(--font-serif); font-size: 2.5rem; font-weight: 900; color: var(--party-dem);">0%</div>
+            </div>
+
+            <div style="border: 1px solid var(--party-rep-border); background: var(--party-rep-bg); padding: 1.5rem; border-radius: var(--radius-lg);">
+              <span class="stat-label" style="color: var(--party-rep);">Republican Caucus Match</span>
+              <div id="match-rep-pct" style="font-family: var(--font-serif); font-size: 2.5rem; font-weight: 900; color: var(--party-rep);">0%</div>
+            </div>
+          </div>
+
+          <button id="btn-retake-quiz" class="btn btn-secondary btn-sm">Retake Quiz</button>
+        </div>
+
+        <!-- Bill-by-Bill Local Representative Comparison Card -->
+        <div class="card" style="margin-bottom: 2rem; padding: 1.75rem;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
+            <div>
+              <h3 style="font-size: 1.35rem; margin: 0;">Compare My Answers Bill-by-Bill With My Own Rep & Senators</h3>
+              <p style="font-size: 0.85rem; color: var(--color-text-muted); margin-top: 0.2rem;">
+                Comparing your votes against your home Congressional delegation. Bills where they voted opposite to you are highlighted.
+              </p>
+            </div>
+            <span id="delegation-match-badge" class="badge badge-neutral">Home District Required</span>
+          </div>
+
+          <div class="table-scroll-container">
+            <table class="civic-table">
+              <thead>
+                <tr>
+                  <th class="table-sticky-col">Bill Number & Question</th>
+                  <th>Your Answer</th>
+                  <th id="th-rep-vote">Your House Rep</th>
+                  <th id="th-sen1-vote">Senator 1</th>
+                  <th id="th-sen2-vote">Senator 2</th>
+                  <th>Official Action</th>
+                </tr>
+              </thead>
+              <tbody id="bill-by-bill-comparison-tbody">
+                <!-- Rendered via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- My Voting Shift Over Time Graph -->
+        <div class="card" style="padding: 1.75rem; margin-bottom: 2.5rem;">
+          <h3 style="font-size: 1.35rem; margin-bottom: 0.35rem;">My Voting Shift Over Time</h3>
+          <p style="font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 1.25rem;">
+            Quarter-by-quarter timeline tracking how your alignment shifts as new legislation is introduced.
+          </p>
+          <div style="height: 260px; position: relative;">
+            <canvas id="user-drift-chart"></canvas>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Persistent Nonpartisan Footer -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <h4>Votalume — Shining Light on the Vote</h4>
+          <p>
+            An independent, nonpartisan civic platform dedicated to illuminating legislative actions in the United States Congress. We do not endorse candidates, parties, or legislation.
+          </p>
+          <div class="footer-data-sources">
+            <a href="https://www.congress.gov" class="source-badge" target="_blank" rel="noopener">Congress.gov</a>
+            <a href="https://clerk.house.gov" class="source-badge" target="_blank" rel="noopener">clerk.house.gov</a>
+            <a href="https://www.senate.gov" class="source-badge" target="_blank" rel="noopener">senate.gov</a>
+            <a href="https://www.cbo.gov" class="source-badge" target="_blank" rel="noopener">CBO.gov</a>
+            <a href="https://www.jct.gov" class="source-badge" target="_blank" rel="noopener">JCT.gov</a>
+            <a href="https://www.fec.gov" class="source-badge" target="_blank" rel="noopener">FEC.gov</a>
+            <a href="https://bioguide.congress.gov" class="source-badge" target="_blank" rel="noopener">Bioguide / @unitedstates</a>
+          </div>
+        </div>
+
+        <div class="footer-col">
+          <h4>Exploration</h4>
+          <ul>
+            <li><a href="lawmakers.html">Congressional Lawmakers</a></li>
+            <li><a href="bills.html">Bills & Roll Calls</a></li>
+            <li><a href="parties.html">Party Caucus Analysis</a></li>
+            <li><a href="compare.html">Compare Lawmakers</a></li>
+            <li><a href="quiz.html">Civic Alignment Quiz</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Methodology</h4>
+          <ul>
+            <li><a href="guide.html">73-Tag Taxonomy Guide</a></li>
+            <li><a href="guide.html#indices">6 Composite Indices Formula</a></li>
+            <li><a href="guide.html#attendance">Lame-Duck Attendance Rules</a></li>
+            <li><a href="guide.html#financial">Financial Disclosures Neutrality</a></li>
+            <li><a href="guide.html#changelog">Data Changelog & Health</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Accountability</h4>
+          <p style="margin-bottom: 0.75rem;">
+            Notice a data discrepancy or missing roll-call record? Help us preserve absolute civic accuracy.
+          </p>
+          <button class="btn btn-secondary btn-sm trigger-discrepancy-modal" style="width: 100%;">
+            Report a Data Discrepancy
+          </button>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>
+          © 2026 Votalume Civic Project. Public domain Congressional portraits curated via <code>@unitedstates</code> / Bioguide.
+        </div>
+        <div>
+          <a href="guide.html#disclaimer">Nonpartisan Policy</a> • 
+          <a href="guide.html#privacy">Privacy & Local Storage</a> • 
+          <a href="guide.html#changelog">System Health</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Modals -->
+  <div id="global-search-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-search-heading">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="modal-search-heading">Search Congress</h3>
+        <button class="modal-close-btn" aria-label="Close search modal">×</button>
+      </div>
+      <div class="modal-body" style="padding: 1rem 1.5rem 0.5rem 1.5rem;">
+        <div class="search-input-group">
+          <svg class="search-icon-inside" viewBox="0 0 24 24">
+            <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+          </svg>
+          <input type="text" id="modal-search-input" class="input-search-global" placeholder="Search Representatives, Senators, Bills (e.g. H.R. 1), or Tags..." />
+        </div>
+      </div>
+      <div id="modal-search-results" class="modal-body" style="max-height: 380px; padding: 0.5rem 1.5rem 1.5rem 1.5rem;"></div>
+    </div>
+  </div>
+
+  <div id="auth-profile-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="auth-modal-title">Sign In / Profile</h3>
+        <button class="modal-close-btn" aria-label="Close authentication modal">×</button>
+      </div>
+      <div id="auth-modal-body" class="modal-body"></div>
+    </div>
+  </div>
+
+  <div id="discrepancy-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="discrepancy-modal-title">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="discrepancy-modal-title">Report a Data Discrepancy</h3>
+        <button class="modal-close-btn" aria-label="Close modal">×</button>
+      </div>
+      <form id="discrepancy-form">
+        <div class="modal-body">
+          <div class="form-group" style="margin-bottom: 0.75rem;">
+            <label class="form-label">Lawmaker or Roll-Call ID</label>
+            <input type="text" class="form-input" required placeholder="e.g. S001150 or H-119-01-084" />
+          </div>
+          <div class="form-group" style="margin-bottom: 0.75rem;">
+            <label class="form-label">Discrepancy Description & Official Source URL</label>
+            <textarea class="form-input" rows="4" required placeholder="Describe the discrepancy and paste the official government link..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Submit Report</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/seed-data.js"></script>
+  <script src="js/state-districts.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/quiz-page.js"></script>
+</body>
+</html>

@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Compare Lawmakers Side-by-Side — Votalume</title>
+  <meta name="description" content="Compare any two Congressional lawmakers side-by-side across attendance, composite policy indices, financial disclosures, and vote disagreements." />
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:ital,wght@0,400;0,700;0,900;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+
+  <!-- CDN Dependencies -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+  <!-- Top Civic Notice -->
+  <div class="top-notice-bar">
+    <div class="top-notice-text">
+      <span class="top-notice-badge">Official Record</span>
+      <span>Nonpartisan Civic Legislative Reference • United States Congress</span>
+    </div>
+  </div>
+
+  <div id="cache-notice-banner" class="cache-notice-banner">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="12" y1="8" x2="12" y2="12"></line>
+      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+    </svg>
+    <span>Showing cached civic database. Master Google Sheet sync in progress.</span>
+  </div>
+
+  <!-- Persistent Header -->
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="index.html" class="brand-wrapper" aria-label="Votalume Home">
+        <div class="brand-torch-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 2L15 8H9L12 2Z" fill="#FFF"/>
+            <path d="M8 9H16L15 15H9L8 9Z" fill="#FFF"/>
+            <path d="M10 16H14L13 22H11L10 16Z" fill="#FFF"/>
+          </svg>
+        </div>
+        <div class="brand-titles">
+          <span class="brand-name">Votalume</span>
+          <span class="brand-tagline">Shining Light on the Vote</span>
+        </div>
+      </a>
+
+      <button class="mobile-nav-toggle" aria-label="Toggle Navigation Menu">☰</button>
+
+      <nav class="primary-nav">
+        <a href="lawmakers.html" class="nav-link">Lawmakers</a>
+        <a href="bills.html" class="nav-link">Bills & Votes</a>
+        <a href="parties.html" class="nav-link">Parties</a>
+        <a href="compare.html" class="nav-link active">Compare</a>
+        <a href="quiz.html" class="nav-link">Alignment Quiz</a>
+        <a href="guide.html" class="nav-link">Tags & Methodology</a>
+      </nav>
+
+      <div class="header-actions">
+        <button id="header-search-btn" class="btn-header-search" aria-label="Search Congress">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <span>Search</span>
+          <kbd>⌘K</kbd>
+        </button>
+
+        <a href="guide.html#health" id="header-live-sync-badge" class="live-sync-indicator">
+          <span class="sync-pulse"></span> Live Sync
+        </a>
+
+        <button id="header-user-auth-btn" class="btn-user-auth">
+          <span>Sign In / Profile</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="container">
+      
+      <div style="margin-bottom: 2rem;">
+        <h1>Side-by-Side Lawmaker Comparison</h1>
+        <p style="color: var(--color-text-secondary); max-width: 800px; font-size: 1.05rem;">
+          Compare any two Members of Congress across their six composite policy indices, attendance consistency, financial disclosures, and the specific roll calls where they disagreed.
+        </p>
+      </div>
+
+      <!-- Selectors Card -->
+      <div class="card" style="margin-bottom: 2rem; padding: 1.5rem;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+          <div class="form-group">
+            <label class="form-label" style="font-size: 0.95rem;">Select Lawmaker A</label>
+            <select id="select-lawmaker-a" class="form-select"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="font-size: 0.95rem;">Select Lawmaker B</label>
+            <select id="select-lawmaker-b" class="form-select"></select>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--color-border); font-size: 0.8rem; color: var(--color-text-muted); flex-wrap: wrap;">
+          <span>Quick Comparisons:</span>
+          <button class="btn btn-secondary btn-sm preset-btn" data-a="B001299" data-b="S001150">Jim Banks vs. Adam Schiff</button>
+          <button class="btn btn-secondary btn-sm preset-btn" data-a="C001035" data-b="S000033">Susan Collins vs. Bernie Sanders</button>
+          <button class="btn btn-secondary btn-sm preset-btn" data-a="M001184" data-b="J000294">Thomas Massie vs. Hakeem Jeffries</button>
+        </div>
+      </div>
+
+      <!-- Profile Headers Comparison Grid -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2.5rem;">
+        
+        <!-- Lawmaker A Box -->
+        <div class="card" id="card-lawmaker-a">
+          <div style="display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1rem;">
+            <img id="a-photo" src="assets/seal-fallback.svg" alt="" class="member-portrait" style="width: 72px; height: 72px; border-radius: var(--radius-md);" />
+            <div>
+              <h2 id="a-name" style="font-size: 1.4rem; margin: 0;"></h2>
+              <div id="a-career" style="font-size: 0.8rem; color: var(--color-civic-navy); font-weight: 600; margin: 0.2rem 0;"></div>
+              <div style="display: flex; gap: 0.35rem; align-items: center;">
+                <span id="a-party-badge" class="badge"></span>
+                <span id="a-state-badge" class="badge badge-neutral"></span>
+              </div>
+            </div>
+          </div>
+          <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-bottom: 0.5rem;">
+            <strong>District Lean:</strong> <span id="a-lean"></span>
+          </div>
+          <div style="font-size: 0.8rem; color: var(--color-text-secondary);">
+            <strong>Committees:</strong> <span id="a-committees"></span>
+          </div>
+        </div>
+
+        <!-- Lawmaker B Box -->
+        <div class="card" id="card-lawmaker-b">
+          <div style="display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1rem;">
+            <img id="b-photo" src="assets/seal-fallback.svg" alt="" class="member-portrait" style="width: 72px; height: 72px; border-radius: var(--radius-md);" />
+            <div>
+              <h2 id="b-name" style="font-size: 1.4rem; margin: 0;"></h2>
+              <div id="b-career" style="font-size: 0.8rem; color: var(--color-civic-navy); font-weight: 600; margin: 0.2rem 0;"></div>
+              <div style="display: flex; gap: 0.35rem; align-items: center;">
+                <span id="b-party-badge" class="badge"></span>
+                <span id="b-state-badge" class="badge badge-neutral"></span>
+              </div>
+            </div>
+          </div>
+          <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-bottom: 0.5rem;">
+            <strong>District Lean:</strong> <span id="b-lean"></span>
+          </div>
+          <div style="font-size: 0.8rem; color: var(--color-text-secondary);">
+            <strong>Committees:</strong> <span id="b-committees"></span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Comparative Key Metrics Table -->
+      <section class="card" style="margin-bottom: 2.5rem; padding: 1.5rem;">
+        <h2 style="font-size: 1.35rem; margin-bottom: 1.25rem;">Key Accountability Metrics Comparison</h2>
+        
+        <div class="table-scroll-container">
+          <table class="civic-table">
+            <thead>
+              <tr>
+                <th class="table-sticky-col">Metric</th>
+                <th id="th-name-a">Lawmaker A</th>
+                <th id="th-name-b">Lawmaker B</th>
+                <th>Divergence Note</th>
+              </tr>
+            </thead>
+            <tbody id="metrics-compare-tbody">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 6 Composite Indices Bar Comparison Chart -->
+      <section class="card" style="margin-bottom: 2.5rem; padding: 1.75rem;">
+        <h2 style="font-size: 1.35rem; margin-bottom: 0.35rem;">6 Composite Policy Indices Comparison</h2>
+        <p style="color: var(--color-text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">
+          Side-by-side synthesis across economic, social, governance, defense, health, and energy dimensions (0–100%).
+        </p>
+        <div style="height: 320px; position: relative;">
+          <canvas id="compare-indices-chart"></canvas>
+        </div>
+      </section>
+
+      <!-- Where They Disagreed Roll-Call Table -->
+      <section style="margin-bottom: 3rem;">
+        <div style="margin-bottom: 1.25rem;">
+          <h2 style="font-size: 1.35rem; margin: 0;">Roll-Call Vote Disagreements</h2>
+          <p style="color: var(--color-text-muted); font-size: 0.85rem; margin-top: 0.2rem;">
+            Recorded votes where these two lawmakers voted on opposite sides of the question.
+          </p>
+        </div>
+
+        <div class="table-scroll-container">
+          <table class="civic-table">
+            <thead>
+              <tr>
+                <th class="table-sticky-col">Bill Number & Title</th>
+                <th>Date</th>
+                <th>Result</th>
+                <th id="disagree-th-a">Lawmaker A Vote</th>
+                <th id="disagree-th-b">Lawmaker B Vote</th>
+                <th>Key Assigned Tags</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="disagreements-tbody">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Persistent Nonpartisan Footer -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <h4>Votalume — Shining Light on the Vote</h4>
+          <p>
+            An independent, nonpartisan civic platform dedicated to illuminating legislative actions in the United States Congress. We do not endorse candidates, parties, or legislation.
+          </p>
+          <div class="footer-data-sources">
+            <a href="https://www.congress.gov" class="source-badge" target="_blank" rel="noopener">Congress.gov</a>
+            <a href="https://clerk.house.gov" class="source-badge" target="_blank" rel="noopener">clerk.house.gov</a>
+            <a href="https://www.senate.gov" class="source-badge" target="_blank" rel="noopener">senate.gov</a>
+            <a href="https://www.cbo.gov" class="source-badge" target="_blank" rel="noopener">CBO.gov</a>
+            <a href="https://www.jct.gov" class="source-badge" target="_blank" rel="noopener">JCT.gov</a>
+            <a href="https://www.fec.gov" class="source-badge" target="_blank" rel="noopener">FEC.gov</a>
+            <a href="https://bioguide.congress.gov" class="source-badge" target="_blank" rel="noopener">Bioguide / @unitedstates</a>
+          </div>
+        </div>
+
+        <div class="footer-col">
+          <h4>Exploration</h4>
+          <ul>
+            <li><a href="lawmakers.html">Congressional Lawmakers</a></li>
+            <li><a href="bills.html">Bills & Roll Calls</a></li>
+            <li><a href="parties.html">Party Caucus Analysis</a></li>
+            <li><a href="compare.html">Compare Lawmakers</a></li>
+            <li><a href="quiz.html">Civic Alignment Quiz</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Methodology</h4>
+          <ul>
+            <li><a href="guide.html">73-Tag Taxonomy Guide</a></li>
+            <li><a href="guide.html#indices">6 Composite Indices Formula</a></li>
+            <li><a href="guide.html#attendance">Lame-Duck Attendance Rules</a></li>
+            <li><a href="guide.html#financial">Financial Disclosures Neutrality</a></li>
+            <li><a href="guide.html#changelog">Data Changelog & Health</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Accountability</h4>
+          <p style="margin-bottom: 0.75rem;">
+            Notice a data discrepancy or missing roll-call record? Help us preserve absolute civic accuracy.
+          </p>
+          <button class="btn btn-secondary btn-sm trigger-discrepancy-modal" style="width: 100%;">
+            Report a Data Discrepancy
+          </button>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>
+          © 2026 Votalume Civic Project. Public domain Congressional portraits curated via <code>@unitedstates</code> / Bioguide.
+        </div>
+        <div>
+          <a href="guide.html#disclaimer">Nonpartisan Policy</a> • 
+          <a href="guide.html#privacy">Privacy & Local Storage</a> • 
+          <a href="guide.html#changelog">System Health</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Modals -->
+  <div id="global-search-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-search-heading">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="modal-search-heading">Search Congress</h3>
+        <button class="modal-close-btn" aria-label="Close search modal">×</button>
+      </div>
+      <div class="modal-body" style="padding: 1rem 1.5rem 0.5rem 1.5rem;">
+        <div class="search-input-group">
+          <svg class="search-icon-inside" viewBox="0 0 24 24">
+            <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+          </svg>
+          <input type="text" id="modal-search-input" class="input-search-global" placeholder="Search Representatives, Senators, Bills (e.g. H.R. 1), or Tags..." />
+        </div>
+      </div>
+      <div id="modal-search-results" class="modal-body" style="max-height: 380px; padding: 0.5rem 1.5rem 1.5rem 1.5rem;"></div>
+    </div>
+  </div>
+
+  <div id="auth-profile-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="auth-modal-title">Sign In / Profile</h3>
+        <button class="modal-close-btn" aria-label="Close authentication modal">×</button>
+      </div>
+      <div id="auth-modal-body" class="modal-body"></div>
+    </div>
+  </div>
+
+  <div id="discrepancy-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="discrepancy-modal-title">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="discrepancy-modal-title">Report a Data Discrepancy</h3>
+        <button class="modal-close-btn" aria-label="Close modal">×</button>
+      </div>
+      <form id="discrepancy-form">
+        <div class="modal-body">
+          <div class="form-group" style="margin-bottom: 0.75rem;">
+            <label class="form-label">Lawmaker or Roll-Call ID</label>
+            <input type="text" class="form-input" required placeholder="e.g. S001150 or H-119-01-084" />
+          </div>
+          <div class="form-group" style="margin-bottom: 0.75rem;">
+            <label class="form-label">Discrepancy Description & Official Source URL</label>
+            <textarea class="form-input" rows="4" required placeholder="Describe the discrepancy and paste the official government link..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Submit Report</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/seed-data.js"></script>
+  <script src="js/state-districts.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/compare-page.js"></script>
+</body>
+</html>

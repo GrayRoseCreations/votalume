@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lawmaker Profile — Votalume</title>
+  <meta name="description" content="Nonpartisan Congressional voting record, composite indices, continuous career attendance, and financial sector disclosures." />
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:ital,wght@0,400;0,700;0,900;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+
+  <!-- CDN Dependencies -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+  <!-- Top Civic Notice -->
+  <div class="top-notice-bar">
+    <div class="top-notice-text">
+      <span class="top-notice-badge">Official Record</span>
+      <span>Nonpartisan Civic Legislative Reference • United States Congress</span>
+    </div>
+  </div>
+
+  <!-- Cache / Offline Notice Banner -->
+  <div id="cache-notice-banner" class="cache-notice-banner">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="12" y1="8" x2="12" y2="12"></line>
+      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+    </svg>
+    <span>Showing cached civic database. Master Google Sheet sync in progress.</span>
+  </div>
+
+  <!-- Persistent Header -->
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="index.html" class="brand-wrapper" aria-label="Votalume Home">
+        <div class="brand-torch-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 2L15 8H9L12 2Z" fill="#FFF"/>
+            <path d="M8 9H16L15 15H9L8 9Z" fill="#FFF"/>
+            <path d="M10 16H14L13 22H11L10 16Z" fill="#FFF"/>
+          </svg>
+        </div>
+        <div class="brand-titles">
+          <span class="brand-name">Votalume</span>
+          <span class="brand-tagline">Shining Light on the Vote</span>
+        </div>
+      </a>
+
+      <button class="mobile-nav-toggle" aria-label="Toggle Navigation Menu">☰</button>
+
+      <nav class="primary-nav">
+        <a href="lawmakers.html" class="nav-link active">Lawmakers</a>
+        <a href="bills.html" class="nav-link">Bills & Votes</a>
+        <a href="parties.html" class="nav-link">Parties</a>
+        <a href="compare.html" class="nav-link">Compare</a>
+        <a href="quiz.html" class="nav-link">Alignment Quiz</a>
+        <a href="guide.html" class="nav-link">Tags & Methodology</a>
+      </nav>
+
+      <div class="header-actions">
+        <button id="header-search-btn" class="btn-header-search" aria-label="Search Congress">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <span>Search</span>
+          <kbd>⌘K</kbd>
+        </button>
+
+        <a href="guide.html#health" id="header-live-sync-badge" class="live-sync-indicator">
+          <span class="sync-pulse"></span> Live Sync
+        </a>
+
+        <button id="header-user-auth-btn" class="btn-user-auth">
+          <span>Sign In / Profile</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="container">
+      
+      <!-- Lawmaker Not Found Alert -->
+      <div id="member-error-container" style="display: none;" class="card">
+        <h2>Lawmaker Record Not Found</h2>
+        <p>No Congressional lawmaker matching the provided Bioguide ID was found.</p>
+        <a href="lawmakers.html" class="btn btn-primary" style="margin-top: 1rem;">Return to Lawmakers Directory</a>
+      </div>
+
+      <div id="member-content-wrapper">
+        
+        <!-- Unified Profile Header Card -->
+        <section class="profile-header-card">
+          <div class="profile-header-main">
+            <img id="member-portrait" src="assets/seal-fallback.svg" alt="Lawmaker Portrait" class="profile-portrait-large" />
+            
+            <div class="profile-meta-block">
+              <div class="profile-name-row">
+                <h1 id="member-name" class="profile-name">Loading Lawmaker...</h1>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                  <button id="btn-bookmark-member" class="btn btn-secondary btn-sm" title="Bookmark lawmaker">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <span id="bookmark-label">Bookmark</span>
+                  </button>
+                  <a id="btn-bioguide-link" href="#" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">Bioguide ↗</a>
+                  <a id="btn-official-website" href="#" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">Official .gov ↗</a>
+                </div>
+              </div>
+
+              <!-- Continuous Multi-Chamber Career Banner -->
+              <div class="profile-career-pills">
+                <div id="career-title-banner" class="career-banner">
+                  <!-- e.g. U.S. Senator 2025–Present | U.S. Representative 2017–2025 -->
+                </div>
+                <span id="member-party-badge" class="badge"></span>
+                <span id="member-departure-badge" class="badge badge-neutral"></span>
+              </div>
+
+              <!-- Historical Party Log -->
+              <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-bottom: 0.75rem;">
+                <strong>Party Affiliation Log:</strong> <span id="member-party-history"></span>
+              </div>
+
+              <!-- Seat Safety vs Independence Indicator -->
+              <div class="seat-safety-box">
+                <div>
+                  <span class="stat-label">Seat Safety & Competitiveness</span>
+                  <div id="member-district-lean" style="font-weight: 700; font-size: 0.95rem; color: var(--color-civic-navy);"></div>
+                </div>
+                <div style="text-align: right;">
+                  <span class="stat-label">Crossover Independence Pct</span>
+                  <div id="member-crossover-display" style="font-weight: 700; font-size: 0.95rem; color: var(--color-crossover);"></div>
+                </div>
+              </div>
+
+              <!-- Interactive Committee Gatekeeper Badges -->
+              <div class="committees-wrapper">
+                <span class="stat-label" style="display: block; margin-bottom: 0.35rem;">Committee Gatekeeper & Leadership Roles</span>
+                <div id="member-committees-list">
+                  <!-- Pills rendered via JS -->
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        <!-- Attendance & Lame-Duck Accountability Gauges -->
+        <section style="margin-bottom: 2.5rem;">
+          <h2 style="font-size: 1.4rem; margin-bottom: 0.5rem;">Attendance & Lame-Duck Accountability</h2>
+          <p style="color: var(--color-text-muted); font-size: 0.875rem; margin-bottom: 1.25rem;">
+            Separated metrics isolate pre-election regular session voting from post-election lame-duck sessions (Nov–Jan), tracking whether departing members continued showing up through the final bell.
+          </p>
+
+          <div class="gauges-grid">
+            <!-- Gauge 1: Regular Attendance -->
+            <div class="gauge-card">
+              <span class="gauge-title">Regular-Term Attendance</span>
+              <div id="gauge-regular-val" class="gauge-value">--</div>
+              <div class="gauge-bar-wrapper">
+                <div id="gauge-regular-fill" class="gauge-bar-fill" style="background-color: #15803D; width: 0%;"></div>
+              </div>
+              <span class="gauge-footnote">Pre-election session (excluding Not In Office)</span>
+            </div>
+
+            <!-- Gauge 2: Lame-Duck Attendance -->
+            <div class="gauge-card">
+              <span class="gauge-title">Lame-Duck Attendance (Nov–Jan)</span>
+              <div id="gauge-lameduck-val" class="gauge-value">--</div>
+              <div id="lameduck-badge-container" style="margin: 0.35rem 0;"></div>
+              <span class="gauge-footnote">Post-election session attendance</span>
+            </div>
+
+            <!-- Gauge 3: Active Abstention (Present) Rate -->
+            <div class="gauge-card">
+              <span class="gauge-title">Active Abstention ("Present")</span>
+              <div id="gauge-present-val" class="gauge-value">--</div>
+              <div id="recent-absence-alert-container" style="margin: 0.35rem 0;"></div>
+              <span class="gauge-footnote">Recorded Present instead of Yea/Nay</span>
+            </div>
+
+            <!-- Gauge 4: Consecutive & Landmark Missed -->
+            <div class="gauge-card">
+              <span class="gauge-title">High-Impact Absences</span>
+              <div style="text-align: left; padding: 0.25rem 0.5rem; font-size: 0.825rem;">
+                <div><strong>Longest Absence Streak:</strong> <span id="streak-consecutive-val">--</span></div>
+                <div style="margin-top: 0.35rem;"><strong>Decisive / Landmark Missed:</strong> <span id="decisive-missed-val" style="font-weight: 700; color: #B91C1C;">0</span></div>
+              </div>
+              <span class="gauge-footnote">Consecutive streak & decisive votes missed</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Split Presidential Support Gauges -->
+        <section class="card" style="margin-bottom: 2.5rem;">
+          <h2 style="font-size: 1.35rem; margin-bottom: 0.35rem;">Split Presidential Support Gauges</h2>
+          <p style="color: var(--color-text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">
+            Measures how frequently the lawmaker votes in alignment with the President's stated position, separating periods when their own party holds the White House from periods when the opposition party is in power.
+          </p>
+
+          <div class="split-presidential-container">
+            <div class="split-pres-box">
+              <span class="stat-label">When Own Party Holds White House</span>
+              <div style="display: flex; align-items: baseline; gap: 0.5rem; margin: 0.5rem 0;">
+                <span id="pres-own-party-val" style="font-family: var(--font-serif); font-size: 2rem; font-weight: 900; color: var(--color-civic-navy);">--</span>
+                <span id="pres-own-party-sample" class="badge badge-neutral">n = 0</span>
+              </div>
+              <div class="gauge-bar-wrapper">
+                <div id="pres-own-bar-fill" class="gauge-bar-fill" style="background-color: #1D4ED8; width: 0%;"></div>
+              </div>
+              <span style="font-size: 0.75rem; color: var(--color-text-muted);">Alignment percentage with in-party administration</span>
+            </div>
+
+            <div class="split-pres-box">
+              <span class="stat-label">When Opposing Party Holds White House</span>
+              <div style="display: flex; align-items: baseline; gap: 0.5rem; margin: 0.5rem 0;">
+                <span id="pres-opp-party-val" style="font-family: var(--font-serif); font-size: 2rem; font-weight: 900; color: var(--color-civic-navy);">--</span>
+                <span id="pres-opp-party-sample" class="badge badge-neutral">n = 0</span>
+              </div>
+              <div class="gauge-bar-wrapper">
+                <div id="pres-opp-bar-fill" class="gauge-bar-fill" style="background-color: #D97706; width: 0%;"></div>
+              </div>
+              <span style="font-size: 0.75rem; color: var(--color-text-muted);">Bipartisan cross-aisle presidential concurrence</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 6 Composite Policy Indices -->
+        <section style="margin-bottom: 2.5rem;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.25rem;">
+            <div>
+              <h2 style="font-size: 1.4rem;">6 Composite Voter Indices (0–100%)</h2>
+              <p style="color: var(--color-text-muted); font-size: 0.85rem;">
+                Weighted roll-call synthesis across policy dimensions, calibrated against official CBO/JCT cost scores and substantive amendments.
+              </p>
+            </div>
+            <a href="guide.html#indices" class="btn btn-secondary btn-sm">Indices Methodology →</a>
+          </div>
+
+          <div class="indices-grid">
+            <!-- 1. Economic & Fiscal -->
+            <div class="index-card">
+              <div class="index-header">
+                <span class="index-name">Economic & Fiscal</span>
+                <span id="idx-econ-sample" class="badge badge-neutral">n = 0</span>
+              </div>
+              <div class="index-score-display">
+                <span id="idx-econ-score" class="index-score-number">--</span>
+                <span style="font-size: 0.8rem; color: var(--color-text-muted);">/ 100</span>
+              </div>
+              <div class="index-bar-track">
+                <div id="idx-econ-bar" class="index-bar-val" style="width: 0%;"></div>
+              </div>
+              <span style="font-size: 0.72rem; color: var(--color-text-muted);">Tax policy, appropriations, spending caps, debt limits</span>
+            </div>
+
+            <!-- 2. Social Rights & Liberties -->
+            <div class="index-card">
+              <div class="index-header">
+                <span class="index-name">Social Rights & Liberties</span>
+                <span id="idx-social-sample" class="badge badge-neutral">n = 0</span>
+              </div>
+              <div class="index-score-display">
+                <span id="idx-social-score" class="index-score-number">--</span>
+                <span style="font-size: 0.8rem; color: var(--color-text-muted);">/ 100</span>
+              </div>
+              <div class="index-bar-track">
+                <div id="idx-social-bar" class="index-bar-val" style="width: 0%;"></div>
+              </div>
+              <span style="font-size: 0.72rem; color: var(--color-text-muted);">Civil rights, voting protections, personal autonomy</span>
+            </div>
+
+            <!-- 3. Government & Oversight -->
+            <div class="index-card">
+              <div class="index-header">
+                <span class="index-name">Government & Oversight</span>
+                <span id="idx-gov-sample" class="badge badge-neutral">n = 0</span>
+              </div>
+              <div class="index-score-display">
+                <span id="idx-gov-score" class="index-score-number">--</span>
+                <span style="font-size: 0.8rem; color: var(--color-text-muted);">/ 100</span>
+              </div>
+              <div class="index-bar-track">
+                <div id="idx-gov-bar" class="index-bar-val" style="width: 0%;"></div>
+              </div>
+              <span style="font-size: 0.72rem; color: var(--color-text-muted);">Ethics, stock-trade bans, federal jurisdiction, subpoenas</span>
+            </div>
+
+            <!-- 4. Security & Foreign Policy -->
+            <div class="index-card">
+              <div class="index-header">
+                <span class="index-name">Security & Foreign Policy</span>
+                <span id="idx-sec-sample" class="badge badge-neutral">n = 0</span>
+              </div>
+              <div class="index-score-display">
+                <span id="idx-sec-score" class="index-score-number">--</span>
+                <span style="font-size: 0.8rem; color: var(--color-text-muted);">/ 100</span>
+              </div>
+              <div class="index-bar-track">
+                <div id="idx-sec-bar" class="index-bar-val" style="width: 0%;"></div>
+              </div>
+              <span style="font-size: 0.72rem; color: var(--color-text-muted);">Defense spending, foreign aid, surveillance, border</span>
+            </div>
+
+            <!-- 5. Healthcare & Entitlements -->
+            <div class="index-card">
+              <div class="index-header">
+                <span class="index-name">Healthcare & Entitlements</span>
+                <span id="idx-health-sample" class="badge badge-neutral">n = 0</span>
+              </div>
+              <div class="index-score-display">
+                <span id="idx-health-score" class="index-score-number">--</span>
+                <span style="font-size: 0.8rem; color: var(--color-text-muted);">/ 100</span>
+              </div>
+              <div class="index-bar-track">
+                <div id="idx-health-bar" class="index-bar-val" style="width: 0%;"></div>
+              </div>
+              <span style="font-size: 0.72rem; color: var(--color-text-muted);">Medicare, Social Security protections, prescription drugs</span>
+            </div>
+
+            <!-- 6. Energy, Tech & Agriculture -->
+            <div class="index-card">
+              <div class="index-header">
+                <span class="index-name">Energy, Tech & Agriculture</span>
+                <span id="idx-energy-sample" class="badge badge-neutral">n = 0</span>
+              </div>
+              <div class="index-score-display">
+                <span id="idx-energy-score" class="index-score-number">--</span>
+                <span style="font-size: 0.8rem; color: var(--color-text-muted);">/ 100</span>
+              </div>
+              <div class="index-bar-track">
+                <div id="idx-energy-bar" class="index-bar-val" style="width: 0%;"></div>
+              </div>
+              <span style="font-size: 0.72rem; color: var(--color-text-muted);">Clean energy incentives, fossil fuels, farm bills, tech regulation</span>
+            </div>
+          </div>
+
+          <!-- How Often They Change Cards -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-top: 1.5rem;">
+            <div class="card" style="padding: 1.25rem;">
+              <span class="stat-label">Vote Reversal Frequency</span>
+              <div style="display: flex; align-items: baseline; gap: 0.5rem; margin: 0.35rem 0;">
+                <span id="vote-reversal-val" style="font-family: var(--font-serif); font-size: 1.75rem; font-weight: 700; color: var(--color-civic-navy);">--</span>
+                <span style="font-size: 0.8rem; color: var(--color-text-muted);">of substantive votes</span>
+              </div>
+              <p style="font-size: 0.775rem; color: var(--color-text-secondary); margin: 0;">
+                Measures how often this member has voted opposite to an earlier vote on the same or substantially identical legislative text.
+              </p>
+            </div>
+
+            <div class="card" style="padding: 1.25rem;">
+              <span class="stat-label">Quarterly Political Alignment Shift</span>
+              <div style="display: flex; align-items: baseline; gap: 0.5rem; margin: 0.35rem 0;">
+                <span id="quarterly-shift-val" style="font-family: var(--font-serif); font-size: 1.75rem; font-weight: 700; color: var(--color-civic-navy);">--</span>
+                <span id="alignment-drift-val" class="badge badge-neutral">Net Drift: 0.0</span>
+              </div>
+              <p style="font-size: 0.775rem; color: var(--color-text-secondary); margin: 0;">
+                Mean point change in voting indices across consecutive calendar quarters.
+              </p>
+            </div>
+          </div>
+
+          <!-- Quarterly Shift Timeline Graph -->
+          <div class="card" style="margin-top: 1.5rem; padding: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+              <h3 style="font-size: 1.15rem; margin: 0;">Quarterly Voting Shift Timeline</h3>
+              <span style="font-size: 0.75rem; color: var(--color-text-muted);">Overlaid with your personal alignment if quiz taken</span>
+            </div>
+            <div style="height: 280px; position: relative;">
+              <canvas id="quarterly-shift-chart"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <!-- Neutral Financial Disclosures & Sector Overlap Card -->
+        <section class="financial-card">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem;">
+            <div>
+              <h2 style="font-size: 1.35rem; margin: 0;">Financial Disclosures & Sector Overlap</h2>
+              <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 0.2rem;">
+                Official FEC filing audits, STOCK Act 30-day notifications, and committee jurisdiction overlap.
+              </div>
+            </div>
+            <span id="portfolio-status-badge" class="badge"></span>
+          </div>
+
+          <!-- Campaign Finance Split -->
+          <div>
+            <span class="stat-label">FEC Campaign Contribution Breakdown</span>
+            <div class="funding-split-bar">
+              <div id="seg-small-donors" class="funding-seg-small" style="width: 40%;">Small Donors 40%</div>
+              <div id="seg-large-donors" class="funding-seg-large" style="width: 40%;">Large Donors 40%</div>
+              <div id="seg-pacs" class="funding-seg-pac" style="width: 20%;">PACs 20%</div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--color-text-secondary);">
+              <span>● Small Individual Donors (≤$200)</span>
+              <span>● Large Individual Donors</span>
+              <span>● Political Action Committees (PACs)</span>
+            </div>
+          </div>
+
+          <!-- STOCK Act & Held Sectors -->
+          <div class="stock-act-grid">
+            <div class="stock-stat-box">
+              <span class="stat-label">STOCK Act 30-Day Flags</span>
+              <div id="stock-flags-val" style="font-weight: 700; font-size: 1.1rem; color: var(--color-civic-navy); margin-top: 0.25rem;">0 Flags</div>
+              <div style="font-size: 0.72rem; color: var(--color-text-muted); margin-top: 0.2rem;">Timely filing compliance</div>
+            </div>
+            <div class="stock-stat-box">
+              <span class="stat-label">Held Sectors Roll Calls</span>
+              <div id="held-sectors-val" style="font-weight: 700; font-size: 0.9rem; color: var(--color-civic-navy); margin-top: 0.25rem;">Audit queued</div>
+              <div style="font-size: 0.72rem; color: var(--color-text-muted); margin-top: 0.2rem;">Excludes diversified mutual funds</div>
+            </div>
+            <div class="stock-stat-box">
+              <span class="stat-label">Legislative Effectiveness & Earmarks</span>
+              <div id="effectiveness-val" style="font-weight: 600; font-size: 0.825rem; color: var(--color-civic-navy); margin-top: 0.25rem;">Disclosed</div>
+              <div style="font-size: 0.72rem; color: var(--color-text-muted); margin-top: 0.2rem;">Enacted bills & funded projects</div>
+            </div>
+          </div>
+
+          <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 1rem;">
+            <strong>Top Donor Sectors & Jurisdiction Overlap:</strong> <span id="donor-industries-val">Audited by House/Senate Ethics</span>
+          </div>
+          <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 0.35rem;">
+            <strong>State Major Industries:</strong> <span id="state-industries-val"></span>
+          </div>
+
+          <!-- Mandatory Neutrality Disclaimer -->
+          <div class="neutrality-disclaimer-box">
+            <strong>Nonpartisan Disclosure Neutrality Disclaimer:</strong> Votalume presents raw public financial disclosure records and roll-call tallies as certified by official government filings without editorial conjecture. Ownership of diversified broad-market index funds, mutual funds, and federally approved qualified blind trusts is explicitly noted and separated from direct individual corporate equities.
+          </div>
+        </section>
+
+        <!-- Searchable Roll-Call History Table -->
+        <section style="margin-bottom: 3rem;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <h2 style="font-size: 1.35rem; margin: 0;">Roll-Call Vote History</h2>
+              <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 0.2rem;">
+                Filter this lawmaker's recorded roll calls by decisive margins, landmark enactments, or reversals.
+              </div>
+            </div>
+
+            <!-- Roll-Call Filters -->
+            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+              <select id="vote-filter-type" class="form-select" style="padding: 0.35rem 0.65rem; font-size: 0.85rem;">
+                <option value="ALL">All Recorded Votes</option>
+                <option value="DECISIVE">Decisive Margin Votes Only</option>
+                <option value="LANDMARK">Landmark Votes Only</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-scroll-container">
+            <table class="civic-table">
+              <thead>
+                <tr>
+                  <th class="table-sticky-col">Bill & Title</th>
+                  <th>Chamber</th>
+                  <th>Vote Date</th>
+                  <th>Result</th>
+                  <th>Member Vote</th>
+                  <th>Key Assigned Tags</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="member-votes-tbody">
+                <!-- Rendered via JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Persistent Nonpartisan Footer -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <h4>Votalume — Shining Light on the Vote</h4>
+          <p>
+            An independent, nonpartisan civic platform dedicated to illuminating legislative actions in the United States Congress. We do not endorse candidates, parties, or legislation.
+          </p>
+          <div class="footer-data-sources">
+            <a href="https://www.congress.gov" class="source-badge" target="_blank" rel="noopener">Congress.gov</a>
+            <a href="https://clerk.house.gov" class="source-badge" target="_blank" rel="noopener">clerk.house.gov</a>
+            <a href="https://www.senate.gov" class="source-badge" target="_blank" rel="noopener">senate.gov</a>
+            <a href="https://www.cbo.gov" class="source-badge" target="_blank" rel="noopener">CBO.gov</a>
+            <a href="https://www.jct.gov" class="source-badge" target="_blank" rel="noopener">JCT.gov</a>
+            <a href="https://www.fec.gov" class="source-badge" target="_blank" rel="noopener">FEC.gov</a>
+            <a href="https://bioguide.congress.gov" class="source-badge" target="_blank" rel="noopener">Bioguide / @unitedstates</a>
+          </div>
+        </div>
+
+        <div class="footer-col">
+          <h4>Exploration</h4>
+          <ul>
+            <li><a href="lawmakers.html">Congressional Lawmakers</a></li>
+            <li><a href="bills.html">Bills & Roll Calls</a></li>
+            <li><a href="parties.html">Party Caucus Analysis</a></li>
+            <li><a href="compare.html">Compare Lawmakers</a></li>
+            <li><a href="quiz.html">Civic Alignment Quiz</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Methodology</h4>
+          <ul>
+            <li><a href="guide.html">73-Tag Taxonomy Guide</a></li>
+            <li><a href="guide.html#indices">6 Composite Indices Formula</a></li>
+            <li><a href="guide.html#attendance">Lame-Duck Attendance Rules</a></li>
+            <li><a href="guide.html#financial">Financial Disclosures Neutrality</a></li>
+            <li><a href="guide.html#changelog">Data Changelog & Health</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Accountability</h4>
+          <p style="margin-bottom: 0.75rem;">
+            Notice a data discrepancy or missing roll-call record? Help us preserve absolute civic accuracy.
+          </p>
+          <button class="btn btn-secondary btn-sm trigger-discrepancy-modal" style="width: 100%;">
+            Report a Data Discrepancy
+          </button>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>
+          © 2026 Votalume Civic Project. Public domain Congressional portraits curated via <code>@unitedstates</code> / Bioguide.
+        </div>
+        <div>
+          <a href="guide.html#disclaimer">Nonpartisan Policy</a> • 
+          <a href="guide.html#privacy">Privacy & Local Storage</a> • 
+          <a href="guide.html#changelog">System Health</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Modals -->
+  <div id="global-search-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-search-heading">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="modal-search-heading">Search Congress</h3>
+        <button class="modal-close-btn" aria-label="Close search modal">×</button>
+      </div>
+      <div class="modal-body" style="padding: 1rem 1.5rem 0.5rem 1.5rem;">
+        <div class="search-input-group">
+          <svg class="search-icon-inside" viewBox="0 0 24 24">
+            <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+          </svg>
+          <input type="text" id="modal-search-input" class="input-search-global" placeholder="Search Representatives, Senators, Bills (e.g. H.R. 1), or Tags..." />
+        </div>
+      </div>
+      <div id="modal-search-results" class="modal-body" style="max-height: 380px; padding: 0.5rem 1.5rem 1.5rem 1.5rem;"></div>
+    </div>
+  </div>
+
+  <div id="auth-profile-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="auth-modal-title">Sign In / Profile</h3>
+        <button class="modal-close-btn" aria-label="Close authentication modal">×</button>
+      </div>
+      <div id="auth-modal-body" class="modal-body"></div>
+    </div>
+  </div>
+
+  <div id="discrepancy-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="discrepancy-modal-title">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="discrepancy-modal-title">Report a Data Discrepancy</h3>
+        <button class="modal-close-btn" aria-label="Close modal">×</button>
+      </div>
+      <form id="discrepancy-form">
+        <div class="modal-body">
+          <div class="form-group" style="margin-bottom: 0.75rem;">
+            <label class="form-label">Lawmaker or Roll-Call ID</label>
+            <input type="text" class="form-input" required placeholder="e.g. S001150 or H-119-01-084" />
+          </div>
+          <div class="form-group" style="margin-bottom: 0.75rem;">
+            <label class="form-label">Discrepancy Description & Official Source URL</label>
+            <textarea class="form-input" rows="4" required placeholder="Describe the discrepancy and paste the official government link..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Submit Report</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/seed-data.js"></script>
+  <script src="js/state-districts.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/member-page.js"></script>
+</body>
+</html>
