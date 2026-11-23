@@ -372,17 +372,33 @@
       </div>
       <form id="discrepancy-form">
         <div class="modal-body">
-          <div class="form-group" style="margin-bottom: 0.75rem;">
-            <label class="form-label">Lawmaker or Roll-Call ID</label>
-            <input type="text" class="form-input" required placeholder="e.g. S001150 or H-119-01-084" />
+          <p style="font-size: 0.85rem; color: var(--color-text-secondary); margin-bottom: 0.75rem;">
+            All roll-call data, party-at-vote timestamps, and attendance calculations are checked against official roll-call records from <code>clerk.house.gov</code> and <code>senate.gov</code>.
+          </p>
+          <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-bottom: 0.85rem; display: flex; align-items: center; gap: 0.35rem; background: var(--color-bg-subtle, #F1F5F9); padding: 0.4rem 0.6rem; border-radius: var(--radius-sm, 4px);">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+            <span>Reporting from: <strong id="discrepancy-current-page" style="font-family: monospace;">Current Page</strong></span>
           </div>
           <div class="form-group" style="margin-bottom: 0.75rem;">
-            <label class="form-label">Discrepancy Description & Official Source URL</label>
-            <textarea class="form-input" rows="4" required placeholder="Describe the discrepancy and paste the official government link..."></textarea>
+            <label class="form-label" for="discrepancy-record-id">Lawmaker or Roll-Call ID</label>
+            <input type="text" id="discrepancy-record-id" name="recordId" class="form-input" required placeholder="e.g. S001150 or H-119-01-084" />
           </div>
+          <div class="form-group" style="margin-bottom: 0.75rem;">
+            <label class="form-label" for="discrepancy-description">Discrepancy Description & Official Source URL</label>
+            <textarea id="discrepancy-description" name="description" class="form-input" rows="4" required placeholder="Describe the discrepancy and paste the official government link (Congress.gov or clerk roll call)..."></textarea>
+          </div>
+          <div class="form-group" style="margin-bottom: 0.75rem;">
+            <label class="form-label" for="discrepancy-user-name">Your Name (Optional)</label>
+            <input type="text" id="discrepancy-user-name" name="userName" class="form-input" placeholder="e.g. Jane Doe" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="discrepancy-user-email">Your Email (Optional for audit receipt)</label>
+            <input type="email" id="discrepancy-user-email" name="userEmail" class="form-input" placeholder="citizen@example.org" />
+          </div>
+          <div id="discrepancy-submit-feedback" style="display: none; margin-top: 0.75rem; font-size: 0.85rem; padding: 0.6rem; border-radius: 4px;"></div>
         </div>
         <div class="modal-footer">
-          <button type="submit" class="btn btn-primary">Submit Report</button>
+          <button type="submit" id="discrepancy-submit-btn" class="btn btn-primary">Submit Report</button>
         </div>
       </form>
     </div>

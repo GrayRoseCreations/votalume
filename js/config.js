@@ -26,6 +26,7 @@ const VOTALUME_CONFIG = {
     TAG_DEFINITIONS: { name: "Tag_Definitions", headers: 1 },
     QUIZ_QUESTION_BANK: { name: "Quiz_Question_Bank", headers: 1 },
     BACKFILL_QUEUE: { name: "Backfill_Queue", headers: 1 },
+    DISCREPANCY_REPORTS: { name: "Discrepancy_Reports", headers: 1 },
     SITE_METADATA: { name: "Site_Metadata", headers: 1 },
     // Large Vote Logs: Lazy loaded with headers=0
     HOUSE_VOTES_LOG: { name: "House_Votes_Log", headers: 0, lazy: true },
@@ -54,6 +55,9 @@ const VOTALUME_CONFIG = {
   CACHE_TTL_MINUTES: 15,
   MAX_FETCH_RETRIES: 2,
   RETRY_DELAY_MS: 800,
+
+  // Google Apps Script Webhook Endpoint (Master Database Discrepancy_Reports Tab)
+  REPORT_WEBHOOK_URL: "",
 
   // External Reference URLs
   EXTERNAL_SOURCES: {

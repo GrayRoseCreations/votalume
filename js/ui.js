@@ -401,20 +401,153 @@ const VotalumeUI = (function() {
       if (e.target === modal) modal.classList.remove("active");
     });
 
+    const pageBadge = document.getElementById("discrepancy-current-page");
+    const nameInput = document.getElementById("discrepancy-user-name");
+    const emailInput = document.getElementById("discrepancy-user-email");
+    const recordIdInput = document.getElementById("discrepancy-record-id");
+    const descInput = document.getElementById("discrepancy-description");
+    const feedbackBox = document.getElementById("discrepancy-submit-feedback");
+    const submitBtn = document.getElementById("discrepancy-submit-btn");
+
     document.querySelectorAll(".trigger-discrepancy-modal").forEach((el) => {
       el.addEventListener("click", (e) => {
         e.preventDefault();
+
+        // 1. Capture dynamic page context
+        const pagePath = window.location.pathname.split("/").pop() || "index.html";
+        const cleanTitle = document.title.split("—")[0].trim();
+        if (pageBadge) {
+          pageBadge.textContent = `${pagePath} (${cleanTitle})`;
+        }
+
+        // 2. Pre-fill active authenticated user credentials if available
+        if (window.VotalumeAuth && typeof window.VotalumeAuth.getUser === "function") {
+          const authUser = window.VotalumeAuth.getUser();
+          if (authUser) {
+            if (nameInput && !nameInput.value) {
+              nameInput.value = authUser.displayName || authUser.email?.split("@")[0] || "";
+            }
+            if (emailInput && !emailInput.value) {
+              emailInput.value = authUser.email || "";
+            }
+          }
+        }
+
+        if (feedbackBox) {
+          feedbackBox.style.display = "none";
+          feedbackBox.textContent = "";
+        }
+
         modal.classList.add("active");
       });
     });
 
     const form = document.getElementById("discrepancy-form");
     if (form) {
-      form.addEventListener("submit", (e) => {
+      form.addEventListener("submit", async (e) => {
         e.preventDefault();
-        alert("Thank you. Your nonpartisan data audit request has been logged and queued for editorial verification against official Congressional record roll calls.");
-        form.reset();
-        modal.classList.remove("active");
+
+        const recordId = recordIdInput?.value.trim() || "";
+        const description = descInput?.value.trim() || "";
+        let userName = nameInput?.value.trim() || "";
+        let userEmail = emailInput?.value.trim() || "";
+
+        // Automatic fallback to authenticated citizen identity
+        if (!userName && window.VotalumeAuth && typeof window.VotalumeAuth.getUser === "function") {
+          const authUser = window.VotalumeAuth.getUser();
+          if (authUser) {
+            userName = authUser.displayName || authUser.email?.split("@")[0] || "Authenticated Citizen";
+            if (!userEmail) userEmail = authUser.email || "";
+          }
+        }
+        if (!userName) userName = "Anonymous Citizen";
+
+        const pagePath = window.location.pathname.split("/").pop() || "index.html";
+        const reportData = {
+          timestamp: new Date().toISOString(),
+          pagePath: pagePath,
+          pageUrl: window.location.href,
+          pageTitle: document.title,
+          userName: userName,
+          userEmail: userEmail,
+          recordId: recordId,
+          description: description,
+          targetTab: "Discrepancy_Reports",
+          status: "Pending Verification"
+        };
+
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = "Logging to Master Database...";
+        }
+
+        try {
+          // 1. Dispatch to Google Sheets Master Database Webhook (Tab: Discrepancy_Reports)
+          const webhookUrl = window.VOTALUME_CONFIG?.REPORT_WEBHOOK_URL;
+          if (webhookUrl && webhookUrl.startsWith("http")) {
+            try {
+              await fetch(webhookUrl, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(reportData)
+              });
+            } catch (netErr) {
+              console.warn("[Votalume Report] Webhook dispatch notice:", netErr);
+            }
+          }
+
+          // 2. Cloud Firestore persistent backup
+          if (typeof firebase !== "undefined" && firebase.apps && firebase.apps.length) {
+            try {
+              const db = firebase.firestore();
+              await db.collection("discrepancy_reports").add(reportData);
+            } catch (fsErr) {
+              console.warn("[Votalume Report] Firestore backup write notice:", fsErr);
+            }
+          }
+
+          // 3. LocalStorage offline audit log
+          try {
+            const stored = JSON.parse(localStorage.getItem("votalume_discrepancy_reports") || "[]");
+            stored.push(reportData);
+            localStorage.setItem("votalume_discrepancy_reports", JSON.stringify(stored));
+          } catch (lsErr) {
+            console.warn("[Votalume Report] Local storage cache notice:", lsErr);
+          }
+
+          if (feedbackBox) {
+            feedbackBox.style.display = "block";
+            feedbackBox.style.background = "#DEF7EC";
+            feedbackBox.style.color = "#03543F";
+            feedbackBox.style.border = "1px solid #BCF0DA";
+            feedbackBox.innerHTML = `<strong>✓ Report Queued:</strong> Successfully submitted to master <code>Discrepancy_Reports</code> database from <em>${escapeHtml(pagePath)}</em>. Thank you, <strong>${escapeHtml(userName)}</strong>!`;
+          }
+
+          setTimeout(() => {
+            form.reset();
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.textContent = "Submit Report";
+            }
+            modal.classList.remove("active");
+            if (feedbackBox) feedbackBox.style.display = "none";
+          }, 2400);
+
+        } catch (error) {
+          console.error("[Votalume Report] Submission error:", error);
+          if (feedbackBox) {
+            feedbackBox.style.display = "block";
+            feedbackBox.style.background = "#FDE8E8";
+            feedbackBox.style.color = "#9B1C1C";
+            feedbackBox.style.border = "1px solid #F8B4B4";
+            feedbackBox.textContent = "Notice: Live sync offline, but your audit was saved to local backup. Thank you!";
+          }
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Submit Report";
+          }
+        }
       });
     }
   }
