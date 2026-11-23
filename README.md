@@ -140,6 +140,6 @@ service cloud.firestore {
    ```
 2. Navigate to your repository's **Settings → Pages**.
 3. Under **Build and deployment**, select **Source: Deploy from a branch** and set branch to `main` / `root`.
-4. Click **Save**. The website will be live at `https://[your-username].github.io/[repo-name]/`.
+4. Click **Save**. The website will be live at `https://grayrosecreations.github.io/votalume/`.
 
 *Official Data Attributions: Library of Congress (`Congress.gov`), Office of the Clerk (`clerk.house.gov`), Secretary of the Senate (`senate.gov`), Congressional Budget Office (`CBO.gov`), Joint Committee on Taxation (`JCT.gov`), Federal Election Commission (`FEC.gov`), and Congressional Bioguide.*
