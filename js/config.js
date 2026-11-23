@@ -33,8 +33,8 @@ const VOTALUME_CONFIG = {
 
   // Google Doc Neutral Impact Analysis Viewers
   DOCS: {
-    HOUSE_ANALYSIS: "https://docs.google.com/document/d/1ERY8G6DMIQHtsaCcmlSMSkvKCuQizuQado4uoC2bE0w/edit",
-    SENATE_ANALYSIS: "https://docs.google.com/document/d/1MBkvNt09esmncivhz-RUKUJqHWXsPYprw2IIDs1rV-Y/edit"
+    HOUSE_ANALYSIS: "https://docs.google.com/document/d/1ERY8G6DMIQHtsaCcmlSMSkvKCuQizuQado4uoC2bE0w/edit?tab=t.0#heading=h.m1ocict6ti1c",
+    SENATE_ANALYSIS: "https://docs.google.com/document/d/1MBkvNt09esmncivhz-RUKUJqHWXsPYprw2IIDs1rV-Y/edit?tab=t.0#heading=h.eny4xpj6ephe"
   },
 
   // Firebase Spark Configuration
