@@ -10,6 +10,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await VotalumeData.initCoreData();
 
   initStatsStrip();
+  window.addEventListener("votalume:data-refreshed", initStatsStrip);
   initFinderTabs();
   initDistrictFinder();
   await renderFeaturedLawmakers();
@@ -18,6 +19,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 function initStatsStrip() {
   const meta = VotalumeData.getStore().Site_Metadata || {};
+  const stats = VotalumeData.getCoverageStats();
   const activeSessionEl = document.getElementById("stat-active-session");
   const billsCountEl = document.getElementById("stat-bills-count");
   const votesCountEl = document.getElementById("stat-votes-count");
@@ -27,14 +29,32 @@ function initStatsStrip() {
     activeSessionEl.textContent = meta.Active_Congress?.split(" ")[0] || "119th";
   }
   if (billsCountEl) {
-    billsCountEl.textContent = meta.Total_Bills_Analyzed || "6";
+    billsCountEl.textContent = stats.billCount.toLocaleString();
   }
   if (votesCountEl) {
-    votesCountEl.textContent = meta.Total_Roll_Calls || "6";
+    votesCountEl.textContent = stats.rollCallCount.toLocaleString();
   }
   if (backfillEl) {
-    backfillEl.textContent = meta.Backfill_Completion_Pct || "100%";
+    backfillEl.textContent = `${stats.backfillPercent.toFixed(1)}%`;
   }
+  const setText = (id, value) => {
+    const element = document.getElementById(id);
+    if (element) element.textContent = value;
+  };
+  setText("stat-bills-detail", `${stats.policyBillCount.toLocaleString()} policy bills`);
+  setText("stat-votes-detail", `${stats.proceduralNominationVoteCount.toLocaleString()} procedural / nomination votes`);
+  setText("stat-backfill-detail", `${stats.completedChunks.toLocaleString()} complete; ${stats.remainingChunks.toLocaleString()} chunks remaining`);
+  setText("coverage-date-range", `${stats.firstVoteDate} to ${stats.lastVoteDate}`);
+  setText("coverage-archive-target", `vs. ${stats.archiveTarget}`);
+  setText("coverage-vote-count", stats.rollCallCount.toLocaleString());
+  setText("coverage-vote-breakdown", `${stats.policyBillCount.toLocaleString()} policy bills (${stats.policyVoteCount.toLocaleString()} roll calls); ${stats.proceduralNominationVoteCount.toLocaleString()} procedural / nomination votes; ${stats.otherVoteCount.toLocaleString()} consensus / other votes`);
+  setText("coverage-last-updated", formatMetadataTimestamp(meta.Last_Updated_Timestamp || stats.lastUpdated));
+}
+
+function formatMetadataTimestamp(value) {
+  if (!value || value === "Not available") return "Not available";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
 function initFinderTabs() {

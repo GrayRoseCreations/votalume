@@ -198,16 +198,17 @@ async function renderDisagreements(a, b) {
   const tbody = document.getElementById("disagreements-tbody");
   if (!tbody) return;
 
+  await VotalumeData.loadVoteLogsIfNeeded();
   const bills = await VotalumeData.getAllBills();
   const disagreeRows = [];
 
-  bills.forEach((bill) => {
-    const votesMap = window.VOTALUME_SEED.ROLL_CALL_VOTES[bill.Roll_Call_ID] || {};
-    const voteA = votesMap[a.memberId] || (bill.Result.includes("Passed") ? (a.party === "Republican" ? "Yea" : "Nay") : "Nay");
-    const voteB = votesMap[b.memberId] || (bill.Result.includes("Passed") ? (b.party === "Republican" ? "Yea" : "Nay") : "Nay");
+  for (const bill of bills) {
+    const votesMap = await VotalumeData.getMemberVotesForBill(bill.Roll_Call_ID);
+    const voteA = votesMap[String(a.memberId).toUpperCase()] || "Not recorded";
+    const voteB = votesMap[String(b.memberId).toUpperCase()] || "Not recorded";
 
     // Check if they differed (e.g. Yea vs Nay)
-    if (voteA !== voteB && (voteA === "Yea" || voteA === "Nay") && (voteB === "Yea" || voteB === "Nay")) {
+    if (voteA !== voteB && ["Yea", "Nay"].includes(voteA) && ["Yea", "Nay"].includes(voteB)) {
       const badgeA = voteA === "Yea" ? "badge-yea" : "badge-nay";
       const badgeB = voteB === "Yea" ? "badge-yea" : "badge-nay";
       const tags = (bill.Assigned_Tags || "").split(";").map((t) => t.trim()).slice(0, 2);
@@ -219,7 +220,7 @@ async function renderDisagreements(a, b) {
             <div style="font-size:0.8rem; color:var(--color-text-secondary); max-width:260px;">${VotalumeUI.escapeHtml(bill.Bill_Title)}</div>
           </td>
           <td style="white-space:nowrap; font-size:0.825rem;">${bill.Vote_Date}</td>
-          <td><span class="badge badge-neutral">${bill.Result}</span></td>
+          <td><span class="badge badge-neutral">${bill.Result || "Result unavailable"}</span></td>
           <td><span class="badge ${badgeA}">${voteA}</span></td>
           <td><span class="badge ${badgeB}">${voteB}</span></td>
           <td>
@@ -233,7 +234,7 @@ async function renderDisagreements(a, b) {
         </tr>
       `);
     }
-  });
+  }
 
   tbody.innerHTML = disagreeRows.length > 0 ? disagreeRows.join("") : `<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--color-text-muted);">No recorded roll-call disagreements in the current sample session.</td></tr>`;
 }

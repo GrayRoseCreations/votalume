@@ -226,6 +226,10 @@ async function renderRollCallsTable(memberId) {
   if (!tbody) return;
 
   const bills = await VotalumeData.getAllBills();
+  const votesByRollCall = new Map();
+  for (const bill of bills) {
+    votesByRollCall.set(bill.Roll_Call_ID, await VotalumeData.getMemberVotesForBill(bill.Roll_Call_ID));
+  }
 
   function updateTable() {
     const filter = filterType ? filterType.value : "ALL";
@@ -237,10 +241,10 @@ async function renderRollCallsTable(memberId) {
       if (filter === "DECISIVE" && b.Margin_Type !== "Decisive") return;
       if (filter === "LANDMARK" && b.Landmark_Vote !== "Yes") return;
 
-      const votesMap = window.VOTALUME_SEED.ROLL_CALL_VOTES[b.Roll_Call_ID] || {};
-      const memberVote = votesMap[memberId] || (b.Result?.includes("Passed") ? "Yea" : "Nay");
+      const votesMap = votesByRollCall.get(b.Roll_Call_ID) || {};
+      const memberVote = votesMap[String(memberId).toUpperCase()] || "Not recorded";
 
-      const voteBadgeClass = memberVote === "Yea" ? "badge-yea" : memberVote === "Nay" ? "badge-nay" : "badge-present";
+      const voteBadgeClass = memberVote === "Yea" ? "badge-yea" : memberVote === "Nay" ? "badge-nay" : memberVote === "Present" ? "badge-present" : "badge-neutral";
       const tags = (b.Assigned_Tags || "").split(";").map((t) => t.trim()).slice(0, 2);
 
       rows.push(`
@@ -253,7 +257,7 @@ async function renderRollCallsTable(memberId) {
           </td>
           <td><span class="badge badge-neutral">${b.Chamber}</span></td>
           <td style="font-size: 0.825rem; white-space: nowrap;">${b.Vote_Date}</td>
-          <td><span class="badge badge-neutral">${b.Result}</span></td>
+          <td><span class="badge badge-neutral">${b.Result || "Result unavailable"}</span></td>
           <td><span class="badge ${voteBadgeClass}">${memberVote}</span></td>
           <td>
             <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">

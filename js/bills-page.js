@@ -52,8 +52,9 @@ async function renderBills() {
   if (!container) return;
 
   const filtered = allBills.filter((b) => {
+    if (!b || typeof b !== "object") return false;
     if (searchQuery) {
-      const match = `${b.Bill_Number} ${b.Bill_Title} ${b.Assigned_Tags} ${b.Description}`.toLowerCase();
+      const match = `${b.Bill_Number || ""} ${b.Bill_Title || ""} ${b.Assigned_Tags || ""} ${b.Description || ""}`.toLowerCase();
       if (!match.includes(searchQuery)) return false;
     }
 
@@ -81,40 +82,51 @@ async function renderBills() {
 
   container.innerHTML = filtered.map((b) => {
     const tags = (b.Assigned_Tags || "").split(";").map((t) => t.trim()).filter(Boolean);
-    const isPassed = b.Result?.toLowerCase().includes("passed") || b.Result?.toLowerCase().includes("agreed");
+    const rollCallId = String(b.Roll_Call_ID || "");
+    const result = String(b.Result || "Result unavailable");
+    const isPassed = /passed|agreed/i.test(result);
+    const yeaCount = Number(b.Yea_Count) || 0;
+    const nayCount = Number(b.Nay_Count) || 0;
+    const totalVotes = yeaCount + nayCount || 1;
+    const yeaPercent = (yeaCount / totalVotes) * 100;
+    const nayPercent = (nayCount / totalVotes) * 100;
+    const billUrl = `bill.html?id=${encodeURIComponent(rollCallId)}`;
+    const officialUrl = (value) => /^https?:\/\//i.test(String(value || "")) ? String(value) : "";
+    const docLink = officialUrl(b.Doc_Reference);
+    const congressLink = officialUrl(b.Congress_Gov_URL);
 
     return `
       <div class="card" style="padding: 1.75rem;">
         <div class="card-header">
           <div>
             <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.35rem; flex-wrap: wrap;">
-              <span class="badge badge-neutral">${b.Chamber} • Roll Call #${b.Roll_Call_ID.split("-").pop()}</span>
-              <span class="badge ${isPassed ? 'badge-yea' : 'badge-nay'}">${b.Result}</span>
+              <span class="badge badge-neutral">${VotalumeUI.escapeHtml(b.Chamber || "Chamber not listed")} • Roll Call #${VotalumeUI.escapeHtml(rollCallId.split("-").pop() || "--")}</span>
+              <span class="badge ${isPassed ? 'badge-yea' : 'badge-nay'}">${VotalumeUI.escapeHtml(result)}</span>
               ${b.Margin_Type === 'Decisive' ? '<span class="badge badge-alert">Decisive Margin</span>' : ''}
               ${b.Landmark_Vote === 'Yes' ? '<span class="badge badge-gold">★ Landmark Vote</span>' : ''}
             </div>
             <h2 style="font-size: 1.4rem; margin: 0;">
-              <a href="bill.html?id=${b.Roll_Call_ID}">${b.Bill_Number}: ${VotalumeUI.escapeHtml(b.Bill_Title)}</a>
+              <a href="${billUrl}">${VotalumeUI.escapeHtml(b.Bill_Number || "Bill")}: ${VotalumeUI.escapeHtml(b.Bill_Title || "Title unavailable")}</a>
             </h2>
             <div class="card-subtitle">
-              Voted on <strong>${b.Vote_Date}</strong> (${b.Calendar_Quarter}) • Majority Party: <strong>${b.Majority_Party_At_Vote}</strong>
+              Voted on <strong>${VotalumeUI.escapeHtml(b.Vote_Date || "Date unavailable")}</strong> (${VotalumeUI.escapeHtml(b.Calendar_Quarter || "Quarter unavailable")}) • Majority Party: <strong>${VotalumeUI.escapeHtml(b.Majority_Party_At_Vote || "Not listed")}</strong>
             </div>
           </div>
         </div>
 
         <p style="font-size: 0.9rem; color: var(--color-text-secondary); line-height: 1.6; margin-bottom: 1.25rem;">
-          ${VotalumeUI.escapeHtml(b.Description)}
+          ${VotalumeUI.escapeHtml(b.Description || "Description unavailable")}
         </p>
 
         <!-- Vote Breakdown Bar -->
         <div style="margin-bottom: 1.25rem; background-color: #F8FAFC; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0.85rem 1rem;">
           <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 0.35rem; font-weight: 600;">
-            <span style="color: #15803D;">Yea: ${b.Yea_Count} (GOP: ${b.GOP_Yea}, Dem: ${b.Dem_Yea})</span>
-            <span style="color: #B91C1C;">Nay: ${b.Nay_Count} (GOP: ${b.GOP_Nay}, Dem: ${b.Dem_Nay})</span>
+            <span style="color: #15803D;">Yea: ${yeaCount} (GOP: ${Number(b.GOP_Yea) || 0}, Dem: ${Number(b.Dem_Yea) || 0})</span>
+            <span style="color: #B91C1C;">Nay: ${nayCount} (GOP: ${Number(b.GOP_Nay) || 0}, Dem: ${Number(b.Dem_Nay) || 0})</span>
           </div>
           <div style="height: 8px; background-color: #E2E8F0; border-radius: 9999px; overflow: hidden; display: flex;">
-            <div style="background-color: #15803D; width: ${(b.Yea_Count / (b.Yea_Count + b.Nay_Count || 1)) * 100}%;"></div>
-            <div style="background-color: #B91C1C; width: ${(b.Nay_Count / (b.Yea_Count + b.Nay_Count || 1)) * 100}%;"></div>
+            <div style="background-color: #15803D; width: ${yeaPercent}%;"></div>
+            <div style="background-color: #B91C1C; width: ${nayPercent}%;"></div>
           </div>
         </div>
 
@@ -125,9 +137,9 @@ async function renderBills() {
 
         <!-- Action Buttons -->
         <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-          <a href="bill.html?id=${b.Roll_Call_ID}" class="btn btn-primary btn-sm">Member Roll-Call Breakdown →</a>
-          <a href="${b.Doc_Reference}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">Read Neutral Analysis (Google Doc) ↗</a>
-          <a href="${b.Congress_Gov_URL}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">Congress.gov Text ↗</a>
+          <a href="${billUrl}" class="btn btn-primary btn-sm">Member Roll-Call Breakdown →</a>
+          ${docLink ? `<a href="${docLink}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">Read Neutral Analysis (Google Doc) ↗</a>` : ""}
+          ${congressLink ? `<a href="${congressLink}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">Congress.gov Text ↗</a>` : ""}
         </div>
       </div>
     `;

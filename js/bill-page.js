@@ -152,7 +152,7 @@ async function renderMemberVotes(bill) {
 
     members.forEach((m) => {
       const id = String(m.Member_ID).toUpperCase();
-      const recordedVote = votesMap[id] || (bill.Result.includes("Passed") ? (m.Party === "Republican" ? (bill.GOP_Yea > bill.GOP_Nay ? "Yea" : "Nay") : (bill.Dem_Yea > bill.Dem_Nay ? "Yea" : "Nay")) : "Nay");
+      const recordedVote = votesMap[id] || "Not recorded";
 
       if (partyVal !== "ALL" && m.Party !== partyVal) return;
       if (voteVal !== "ALL" && recordedVote !== voteVal) return;
@@ -162,9 +162,13 @@ async function renderMemberVotes(bill) {
       }
 
       const partyBadge = m.Party === "Democratic" ? "badge-dem" : m.Party === "Republican" ? "badge-rep" : "badge-ind";
-      const voteBadge = recordedVote === "Yea" ? "badge-yea" : recordedVote === "Nay" ? "badge-nay" : "badge-present";
+      const voteBadge = recordedVote === "Yea" ? "badge-yea" : recordedVote === "Nay" ? "badge-nay" : recordedVote === "Present" ? "badge-present" : "badge-neutral";
       
-      const alignsWithMajority = (recordedVote === "Yea" && bill.Result.includes("Passed")) || (recordedVote === "Nay" && !bill.Result.includes("Passed"));
+      const hasResult = Boolean(bill.Result);
+      const alignsWithMajority = hasResult && ((recordedVote === "Yea" && bill.Result.includes("Passed")) || (recordedVote === "Nay" && !bill.Result.includes("Passed")));
+      const majorityLabel = !hasResult || !["Yea", "Nay"].includes(recordedVote)
+        ? "Not classified"
+        : alignsWithMajority ? "Aligns with Majority" : "Minority Position";
 
       rows.push(`
         <tr>
@@ -176,7 +180,7 @@ async function renderMemberVotes(bill) {
           <td><span class="badge ${partyBadge}">${m.Party}</span></td>
           <td>${m.State} ${m.District ? `(${m.District})` : ''}</td>
           <td><span class="badge ${voteBadge}">${recordedVote}</span></td>
-          <td>${alignsWithMajority ? '<span style="color:#15803D; font-weight:600;">✓ Aligns with Majority</span>' : '<span style="color:#B91C1C; font-weight:600;">✕ Minority Position</span>'}</td>
+          <td>${majorityLabel}</td>
           <td><a href="member.html?id=${id}" class="btn btn-secondary btn-sm">Profile →</a></td>
         </tr>
       `);

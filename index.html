@@ -110,6 +110,7 @@
           <p class="hero-lead">
             Votalume provides rigorous, nonpartisan analysis of federal legislation. From career attendance and post-election lame-duck drop-offs to composite voter indices and donor sector overlap, explore unvarnished accountability for every Member of the House and Senate.
           </p>
+          <a href="donate.html" class="btn btn-primary">Support Votalume / Donate</a>
         </div>
       </section>
 
@@ -122,18 +123,36 @@
         </div>
         <div class="stat-item">
           <span class="stat-label">Bills Analyzed</span>
-          <span id="stat-bills-count" class="stat-value">6</span>
-          <span class="stat-sub">Key policy & appropriations</span>
+          <span id="stat-bills-count" class="stat-value">--</span>
+          <span id="stat-bills-detail" class="stat-sub">Loading live data</span>
         </div>
         <div class="stat-item">
           <span class="stat-label">Roll Calls Logged</span>
-          <span id="stat-votes-count" class="stat-value">6</span>
-          <span class="stat-sub">House & Senate recorded votes</span>
+          <span id="stat-votes-count" class="stat-value">--</span>
+          <span id="stat-votes-detail" class="stat-sub">House & Senate recorded votes</span>
         </div>
         <div class="stat-item">
           <span class="stat-label">Database Backfill</span>
-          <span id="stat-backfill-progress" class="stat-value">100%</span>
-          <span class="stat-sub">2025–2026 Archive synchronized</span>
+          <span id="stat-backfill-progress" class="stat-value">--</span>
+          <span id="stat-backfill-detail" class="stat-sub">Loading archive progress</span>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="coverage-heading" style="margin: 1.5rem 0 3rem; padding: 1.5rem;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
+          <div>
+            <h2 id="coverage-heading" style="margin:0 0 0.75rem;">Data Coverage</h2>
+            <p style="margin:0;color:var(--color-text-secondary);">Vote dates: <strong id="coverage-date-range">Loading live data</strong> <span id="coverage-archive-target">vs. 106th–119th Congress (1999–2026)</span></p>
+          </div>
+          <div>
+            <button class="btn btn-secondary btn-sm refresh-live-data" type="button">Refresh Live Data</button>
+            <span id="coverage-refresh-feedback" role="status" aria-live="polite" style="display:block;font-size:0.8rem;margin-top:0.4rem;"></span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1rem;margin-top:1.25rem;">
+          <p style="margin:0;"><strong id="coverage-vote-count">--</strong> roll-call votes logged<br><span id="coverage-vote-breakdown">Policy and procedural / nomination totals loading</span></p>
+          <p style="margin:0;">Update schedule<br><strong>Updated weekly every Monday for the prior Mon–Sun week + 3x daily historical backfill</strong></p>
+          <p style="margin:0;">Last updated<br><strong id="coverage-last-updated">Loading live metadata</strong></p>
         </div>
       </section>
 
@@ -385,5 +404,6 @@
   <script src="js/charts.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/index-page.js"></script>
+  <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script><script type='text/javascript'>kofiwidget2.init('Support me on Ko-fi', '#72a4f2', 'C8M02B83R2');kofiwidget2.draw();</script>
 </body>
 </html>

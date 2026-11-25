@@ -11,7 +11,71 @@ const VotalumeUI = (function() {
     setupAuthModal();
     setupCacheNoticeListener();
     highlightActiveNavLink();
+    setupGlobalSupportActions();
     setupDiscrepancyModal();
+    setupLiveDataRefresh();
+  }
+
+  function setupGlobalSupportActions() {
+    const config = window.VOTALUME_CONFIG || {};
+    const nav = document.querySelector(".primary-nav");
+    if (nav && !nav.querySelector('a[href="donate.html"]')) {
+      const supportLink = document.createElement("a");
+      supportLink.href = "donate.html";
+      supportLink.className = "nav-link";
+      supportLink.textContent = "Support / Donate";
+      if ((window.location.pathname.split("/").pop() || "index.html") === "donate.html") supportLink.classList.add("active");
+      nav.appendChild(supportLink);
+    }
+
+    const footer = document.querySelector(".site-footer");
+    const reportButton = footer?.querySelector(".trigger-discrepancy-modal");
+    if (footer && reportButton && !footer.querySelector("#footer-core-actions")) {
+      const actions = document.createElement("div");
+      actions.id = "footer-core-actions";
+      actions.style.cssText = "display:grid;gap:0.5rem;margin-top:0.5rem";
+      actions.innerHTML = `
+        <button class="btn btn-secondary btn-sm trigger-suggestion-modal" type="button" style="width:100%">Send a Suggestion</button>
+        <a class="btn btn-secondary btn-sm" href="donate.html" style="text-align:center">Support Votalume / Donate</a>
+        <div id="footer-kofi-widget" style="margin-top:0.25rem"></div>
+        <button class="btn btn-secondary btn-sm refresh-live-data" type="button" style="width:100%">Refresh Live Data</button>
+        <span class="live-data-refresh-feedback" role="status" aria-live="polite"></span>
+        <p style="font-size:0.8rem;margin:0.35rem 0 0">AI transparency: Gemini assisted with code, summaries, and automated pipelines; outputs are checked against official records.</p>
+      `;
+      reportButton.insertAdjacentElement("afterend", actions);
+    }
+
+    const widgetHost = document.querySelector("#donate-kofi-widget") || document.querySelector("#footer-kofi-widget");
+    const fallbackUrl = config.KOFI_URL || "https://ko-fi.com/C8M02B83R2";
+    if (widgetHost) {
+      const fallback = document.createElement("a");
+      fallback.href = fallbackUrl;
+      fallback.target = "_blank";
+      fallback.rel = "noopener";
+      fallback.textContent = "Open Ko-fi support page";
+      widgetHost.appendChild(fallback);
+    }
+  }
+
+  function setupLiveDataRefresh() {
+    document.querySelectorAll(".refresh-live-data").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const feedback = button.parentElement?.querySelector(".live-data-refresh-feedback") || document.getElementById("coverage-refresh-feedback");
+        button.disabled = true;
+        if (feedback) feedback.textContent = "Refreshing live data...";
+        try {
+          const refreshed = await window.VotalumeData?.refreshLiveData();
+          if (!refreshed) throw new Error("Some sheet data could not be refreshed.");
+          if (feedback) feedback.textContent = "Data refreshed just now.";
+          window.dispatchEvent(new CustomEvent("votalume:data-refreshed"));
+        } catch (error) {
+          console.error("[Votalume Data] Refresh failed:", error);
+          if (feedback) feedback.textContent = "Refresh incomplete. Showing available data.";
+        } finally {
+          button.disabled = false;
+        }
+      });
+    });
   }
 
   function highlightActiveNavLink() {
@@ -408,10 +472,56 @@ const VotalumeUI = (function() {
     const descInput = document.getElementById("discrepancy-description");
     const feedbackBox = document.getElementById("discrepancy-submit-feedback");
     const submitBtn = document.getElementById("discrepancy-submit-btn");
+    const recordGroup = recordIdInput?.closest(".form-group");
+    const nameGroup = nameInput?.closest(".form-group");
+    const descriptionLabel = modal.querySelector('label[for="discrepancy-description"]');
+    let submissionType = "discrepancy";
 
-    document.querySelectorAll(".trigger-discrepancy-modal").forEach((el) => {
+    let categoryGroup = modal.querySelector("#suggestion-category-group");
+    if (!categoryGroup && recordGroup) {
+      categoryGroup = document.createElement("div");
+      categoryGroup.id = "suggestion-category-group";
+      categoryGroup.className = "form-group";
+      categoryGroup.style.marginBottom = "0.75rem";
+      categoryGroup.innerHTML = `
+        <label class="form-label" for="suggestion-category">Category</label>
+        <select id="suggestion-category" class="form-select">
+          <option value="Feature">Feature</option>
+          <option value="Data">Data</option>
+          <option value="Accessibility">Accessibility</option>
+          <option value="Other">Other</option>
+        </select>
+      `;
+      recordGroup.insertAdjacentElement("beforebegin", categoryGroup);
+    }
+
+    function setSubmissionMode(type) {
+      submissionType = type;
+      const isSuggestion = type === "suggestion";
+      const title = modal.querySelector("#discrepancy-modal-title");
+      if (title) title.textContent = isSuggestion ? "Send a Suggestion" : "Report a Data Discrepancy";
+      if (categoryGroup) categoryGroup.style.display = isSuggestion ? "block" : "none";
+      if (recordGroup) recordGroup.style.display = isSuggestion ? "none" : "block";
+      if (recordIdInput) recordIdInput.required = !isSuggestion;
+      if (nameGroup) nameGroup.style.display = isSuggestion ? "none" : "block";
+      if (descriptionLabel) descriptionLabel.textContent = isSuggestion ? "Suggestion" : "Discrepancy Description & Official Source URL";
+      if (descInput) {
+        descInput.placeholder = isSuggestion
+          ? "What would you like Votalume to improve or add?"
+          : "Describe the discrepancy and paste the official government link (Congress.gov or clerk roll call)...";
+      }
+      if (submitBtn) submitBtn.textContent = isSuggestion ? "Submit Suggestion" : "Submit Report";
+      form?.setAttribute("data-submission-type", type);
+      if (feedbackBox) {
+        feedbackBox.style.display = "none";
+        feedbackBox.textContent = "";
+      }
+    }
+
+    document.querySelectorAll(".trigger-discrepancy-modal, .trigger-suggestion-modal").forEach((el) => {
       el.addEventListener("click", (e) => {
         e.preventDefault();
+        setSubmissionMode(el.classList.contains("trigger-suggestion-modal") ? "suggestion" : "discrepancy");
 
         // 1. Capture dynamic page context
         const pagePath = window.location.pathname.split("/").pop() || "index.html";
@@ -443,6 +553,7 @@ const VotalumeUI = (function() {
     });
 
     const form = document.getElementById("discrepancy-form");
+    setSubmissionMode("discrepancy");
     if (form) {
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -464,15 +575,19 @@ const VotalumeUI = (function() {
 
         const pagePath = window.location.pathname.split("/").pop() || "index.html";
         const reportData = {
+          submission_type: submissionType,
           timestamp: new Date().toISOString(),
           pagePath: pagePath,
           pageUrl: window.location.href,
           pageTitle: document.title,
           userName: userName,
           userEmail: userEmail,
-          recordId: recordId,
+          recordId: submissionType === "suggestion" ? "" : recordId,
           description: description,
-          targetTab: "Discrepancy_Reports",
+          Category: submissionType === "suggestion" ? modal.querySelector("#suggestion-category")?.value || "Other" : "",
+          Suggestion_Text: submissionType === "suggestion" ? description : "",
+          Submitter_Email: submissionType === "suggestion" ? userEmail : "",
+          targetTab: submissionType === "suggestion" ? "Suggestions" : "Discrepancy_Reports",
           status: "Pending Verification"
         };
 
@@ -482,26 +597,23 @@ const VotalumeUI = (function() {
         }
 
         try {
-          // 1. Dispatch to Google Sheets Master Database Webhook (Tab: Discrepancy_Reports)
+          // Apps Script accepts text/plain JSON without triggering a CORS preflight.
           const webhookUrl = window.VOTALUME_CONFIG?.REPORT_WEBHOOK_URL;
-          if (webhookUrl && webhookUrl.startsWith("http")) {
-            try {
-              await fetch(webhookUrl, {
-                method: "POST",
-                mode: "no-cors",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(reportData)
-              });
-            } catch (netErr) {
-              console.warn("[Votalume Report] Webhook dispatch notice:", netErr);
-            }
+          if (!webhookUrl || !/^https:\/\//i.test(webhookUrl)) {
+            throw new Error("The reporting endpoint is not configured. Please try again later.");
           }
+          await fetch(webhookUrl, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify(reportData)
+          });
 
-          // 2. Cloud Firestore persistent backup
+          // Google Apps Script's no-cors response is opaque; a resolved request confirms dispatch, not sheet-side processing.
           if (typeof firebase !== "undefined" && firebase.apps && firebase.apps.length) {
             try {
               const db = firebase.firestore();
-              await db.collection("discrepancy_reports").add(reportData);
+              await db.collection(submissionType === "suggestion" ? "suggestions" : "discrepancy_reports").add(reportData);
             } catch (fsErr) {
               console.warn("[Votalume Report] Firestore backup write notice:", fsErr);
             }
@@ -509,9 +621,10 @@ const VotalumeUI = (function() {
 
           // 3. LocalStorage offline audit log
           try {
-            const stored = JSON.parse(localStorage.getItem("votalume_discrepancy_reports") || "[]");
+            const storageKey = submissionType === "suggestion" ? "votalume_suggestions" : "votalume_discrepancy_reports";
+            const stored = JSON.parse(localStorage.getItem(storageKey) || "[]");
             stored.push(reportData);
-            localStorage.setItem("votalume_discrepancy_reports", JSON.stringify(stored));
+            localStorage.setItem(storageKey, JSON.stringify(stored));
           } catch (lsErr) {
             console.warn("[Votalume Report] Local storage cache notice:", lsErr);
           }
@@ -521,14 +634,16 @@ const VotalumeUI = (function() {
             feedbackBox.style.background = "#DEF7EC";
             feedbackBox.style.color = "#03543F";
             feedbackBox.style.border = "1px solid #BCF0DA";
-            feedbackBox.innerHTML = `<strong>✓ Report Queued:</strong> Successfully submitted to master <code>Discrepancy_Reports</code> database from <em>${escapeHtml(pagePath)}</em>. Thank you, <strong>${escapeHtml(userName)}</strong>!`;
+            const submissionLabel = submissionType === "suggestion" ? "Suggestion" : "Report";
+            const targetLabel = submissionType === "suggestion" ? "Suggestions" : "Discrepancy_Reports";
+            feedbackBox.innerHTML = `<strong>${submissionLabel} sent:</strong> Your submission was dispatched to the master <code>${targetLabel}</code> endpoint. Google Apps Script does not provide a browser-readable receipt.`;
           }
 
           setTimeout(() => {
             form.reset();
             if (submitBtn) {
               submitBtn.disabled = false;
-              submitBtn.textContent = "Submit Report";
+              submitBtn.textContent = submissionType === "suggestion" ? "Submit Suggestion" : "Submit Report";
             }
             modal.classList.remove("active");
             if (feedbackBox) feedbackBox.style.display = "none";
@@ -541,11 +656,11 @@ const VotalumeUI = (function() {
             feedbackBox.style.background = "#FDE8E8";
             feedbackBox.style.color = "#9B1C1C";
             feedbackBox.style.border = "1px solid #F8B4B4";
-            feedbackBox.textContent = "Notice: Live sync offline, but your audit was saved to local backup. Thank you!";
+            feedbackBox.textContent = error.message || "Submission could not be sent. Please try again later.";
           }
           if (submitBtn) {
             submitBtn.disabled = false;
-            submitBtn.textContent = "Submit Report";
+            submitBtn.textContent = submissionType === "suggestion" ? "Submit Suggestion" : "Submit Report";
           }
         }
       });

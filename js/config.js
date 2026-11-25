@@ -18,6 +18,7 @@ const VOTALUME_CONFIG = {
 
   // Tab definitions & header handling
   TABS: {
+    BILLS_SUMMARY: { name: "Bills_Summary", headers: 1 },
     HOUSE_SUMMARY: { name: "House_Summary", headers: 1 },
     SENATE_SUMMARY: { name: "Senate_Summary", headers: 1 },
     PARTY_COMPARISON: { name: "Party_Comparison", headers: 1 },
@@ -57,7 +58,10 @@ const VOTALUME_CONFIG = {
   RETRY_DELAY_MS: 800,
 
   // Google Apps Script Webhook Endpoint (Master Database Discrepancy_Reports Tab)
-  REPORT_WEBHOOK_URL: "",
+  REPORT_WEBHOOK_URL: "https://script.google.com/macros/s/AKfycbxvYWowL0Vi8eLLKwjFZP_TtAImfTrBVf-PrVcFABd9GeLBQaBCbzcS-i3yc594-i5RvQ/exec",
+
+  // Ko-fi Support
+  KOFI_URL: "https://ko-fi.com/C8M02B83R2",
 
   // External Reference URLs
   EXTERNAL_SOURCES: {
@@ -71,10 +75,11 @@ const VOTALUME_CONFIG = {
   },
 
   // Helper to generate the exact CSV fetch URL
-  getSheetCsvUrl: function(tabKey) {
+  getSheetCsvUrl: function(tabKey, cacheBust = false) {
     const tab = this.TABS[tabKey];
     if (!tab) throw new Error(`Unknown tabKey: ${tabKey}`);
-    return `${this.SHEETS_BASE_URL}&sheet=${encodeURIComponent(tab.name)}&headers=${tab.headers}`;
+    const url = `${this.SHEETS_BASE_URL}&sheet=${encodeURIComponent(tab.name)}&headers=${tab.headers}`;
+    return cacheBust ? `${url}&t=${Date.now()}` : url;
   }
 };
 

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Support Votalume — Donate</title>
+  <meta name="description" content="Help keep Votalume's congressional vote records simple, fast, and free for everyone." />
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@400;700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+  <div class="top-notice-bar">
+    <div class="top-notice-text">
+      <span class="top-notice-badge">Independent Civic Project</span>
+      <span>Nonpartisan Congressional vote records</span>
+    </div>
+  </div>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="index.html" class="brand-wrapper" aria-label="Votalume Home">
+        <div class="brand-torch-icon"><svg viewBox="0 0 24 24"><path d="M12 2L15 8H9L12 2Z" fill="#FFF"/><path d="M8 9H16L15 15H9L8 9Z" fill="#FFF"/><path d="M10 16H14L13 22H11L10 16Z" fill="#FFF"/></svg></div>
+        <div class="brand-titles"><span class="brand-name">Votalume</span><span class="brand-tagline">Shining Light on the Vote</span></div>
+      </a>
+      <button class="mobile-nav-toggle" aria-label="Toggle Navigation Menu">☰</button>
+      <nav class="primary-nav">
+        <a href="lawmakers.html" class="nav-link">Lawmakers</a>
+        <a href="bills.html" class="nav-link">Bills & Votes</a>
+        <a href="parties.html" class="nav-link">Parties</a>
+        <a href="compare.html" class="nav-link">Compare</a>
+        <a href="quiz.html" class="nav-link">Alignment Quiz</a>
+        <a href="guide.html" class="nav-link">Tags & Methodology</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="container" style="max-width:900px;">
+      <section style="padding:3rem 0 2rem;">
+        <p class="hero-subtitle-badge">Support independent civic data</p>
+        <h1>Help Keep Congressional Votes Simple, Fast, and Free for Everyone</h1>
+        <p style="font-size:1.05rem;color:var(--color-text-secondary);max-width:780px;">
+          I'm a dad of two kids with special needs—my youngest has cerebral palsy—building Votalume in my spare time with no political party, PAC, or outside organization behind it. I started this project to shine a light on who you vote for so you can see whether your representatives actually vote the way you need them to. Everyone deserves an easy way to check if a lawmaker's record matches what matters to their family—and if they aren't voting for what matters to you, you have the facts to vote them out and choose the representative, not just the party.
+        </p>
+        <p style="margin-top:1.5rem;"><a class="btn btn-primary" href="https://ko-fi.com/C8M02B83R2" target="_blank" rel="noopener">Support Votalume on Ko-fi</a></p>
+      </section>
+
+      <section style="padding:1.5rem 0;border-top:1px solid var(--color-border);">
+        <h2>Built with Google Gemini</h2>
+        <p style="color:var(--color-text-secondary);max-width:780px;">Votalume's code, plain-English summaries, and automated data pipelines were built with Gemini AI. The information is verified directly against official U.S. House, U.S. Senate, Congress.gov, and CBO records.</p>
+      </section>
+
+      <section style="padding:1.5rem 0 3rem;border-top:1px solid var(--color-border);">
+        <h2>Funding Goals</h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.25rem;">
+          <article class="card" style="padding:1.25rem;">
+            <h3>Faster Historical Backfill</h3>
+            <p style="margin-bottom:0;">Bring more congressional bills and roll-call records into the archive sooner.</p>
+          </article>
+          <article class="card" style="padding:1.25rem;">
+            <h3>Tracking the White House</h3>
+            <p style="margin-bottom:0;">Add accountability records for Presidents and Vice Presidents.</p>
+          </article>
+          <article class="card" style="padding:1.25rem;">
+            <h3>State-Level Accountability</h3>
+            <p style="margin-bottom:0;">Expand coverage to Governors and state lawmakers.</p>
+          </article>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <h4>Votalume — Shining Light on the Vote</h4>
+          <p>An independent, nonpartisan civic platform. We do not endorse candidates, parties, or legislation.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Explore</h4>
+          <ul><li><a href="lawmakers.html">Lawmakers</a></li><li><a href="bills.html">Bills & Votes</a></li><li><a href="compare.html">Compare</a></li><li><a href="guide.html">Methodology</a></li></ul>
+        </div>
+        <div class="footer-col">
+          <h4>Accountability</h4>
+          <p style="margin-bottom:0.75rem;">Help us improve the accuracy and usefulness of Votalume.</p>
+          <button class="btn btn-secondary btn-sm trigger-discrepancy-modal" type="button" style="width:100%;">Report a Data Discrepancy</button>
+        </div>
+      </div>
+      <div class="footer-bottom"><div>Votalume is free to use and supported by voluntary contributions.</div><div><a href="index.html">Home</a> · <a href="guide.html#privacy">Privacy</a></div></div>
+    </div>
+  </footer>
+
+  <div id="discrepancy-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="discrepancy-modal-title">
+    <div class="modal-dialog">
+      <div class="modal-header"><h3 id="discrepancy-modal-title">Report a Data Discrepancy</h3><button class="modal-close-btn" aria-label="Close modal">×</button></div>
+      <form id="discrepancy-form">
+        <div class="modal-body">
+          <p style="font-size:0.9rem;color:var(--color-text-secondary);">Send a correction or a suggestion for the Votalume team.</p>
+          <div style="font-size:0.8rem;color:var(--color-text-muted);margin-bottom:0.85rem;">Page: <strong id="discrepancy-current-page">Current Page</strong></div>
+          <div class="form-group" style="margin-bottom:0.75rem;"><label class="form-label" for="discrepancy-record-id">Lawmaker or Roll-Call ID</label><input id="discrepancy-record-id" class="form-input" required placeholder="e.g. H-119-01-084" /></div>
+          <div class="form-group" style="margin-bottom:0.75rem;"><label class="form-label" for="discrepancy-description">Discrepancy Description & Official Source URL</label><textarea id="discrepancy-description" class="form-input" rows="4" required></textarea></div>
+          <div class="form-group" style="margin-bottom:0.75rem;"><label class="form-label" for="discrepancy-user-name">Your Name (Optional)</label><input id="discrepancy-user-name" class="form-input" /></div>
+          <div class="form-group"><label class="form-label" for="discrepancy-user-email">Your Email (Optional)</label><input id="discrepancy-user-email" type="email" class="form-input" /></div>
+          <div id="discrepancy-submit-feedback" role="status" style="display:none;margin-top:0.75rem;font-size:0.9rem;padding:0.75rem;border-radius:4px;"></div>
+        </div>
+        <div class="modal-footer"><button type="submit" id="discrepancy-submit-btn" class="btn btn-primary">Submit Report</button></div>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/seed-data.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/ui.js"></script>
+  <script>document.addEventListener("DOMContentLoaded", () => VotalumeUI.initCommon());</script>
+  <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script><script type='text/javascript'>kofiwidget2.init('Support me on Ko-fi', '#72a4f2', 'C8M02B83R2');kofiwidget2.draw();</script>
+</body>
+</html>
