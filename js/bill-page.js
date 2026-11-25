@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const rollCallId = urlParams.get("id") || "H-119-01-084";
 
   await loadAndRenderBill(rollCallId);
+  window.addEventListener("votalume:data-refreshed", () => loadAndRenderBill(rollCallId));
 });
 
 async function loadAndRenderBill(rollCallId) {
@@ -25,17 +26,21 @@ async function loadAndRenderBill(rollCallId) {
     return;
   }
 
-  // Dynamic document title
-  document.title = `${bill.Bill_Number}: ${bill.Bill_Title} (Roll Call #${bill.Roll_Call_ID.split('-').pop()}) — Votalume`;
+  const billRollCallId = String(bill.Roll_Call_ID || "");
+  const plainTitle = bill.Plain_English_Title || bill.Bill_Title || bill.Bill_Number || "Congressional vote";
+  const result = bill.Outcome || bill.Result || "Outcome unavailable";
+  const quarter = bill.Calendar_Quarter || getCalendarQuarter(bill.Vote_Date);
+
+  document.title = `${plainTitle} (${bill.Bill_Number || billRollCallId}) — Votalume`;
 
   // Header Details
-  document.getElementById("bill-chamber-badge").textContent = `${bill.Chamber} Roll Call`;
-  document.getElementById("bill-rollcall-id-badge").textContent = bill.Roll_Call_ID;
+  document.getElementById("bill-chamber-badge").textContent = `${bill.Chamber || "Congress"} Roll Call`;
+  document.getElementById("bill-rollcall-id-badge").textContent = billRollCallId;
 
-  const isPassed = bill.Result?.toLowerCase().includes("passed") || bill.Result?.toLowerCase().includes("agreed");
+  const isPassed = /passed|agreed/i.test(result);
   const resultBadge = document.getElementById("bill-result-badge");
-  resultBadge.textContent = bill.Result;
-  resultBadge.className = `badge ${isPassed ? 'badge-yea' : 'badge-nay'}`;
+  resultBadge.textContent = result;
+  resultBadge.className = `badge ${isPassed ? 'badge-yea' : /failed|rejected/i.test(result) ? 'badge-nay' : 'badge-neutral'}`;
 
   const marginBadge = document.getElementById("bill-margin-badge");
   if (bill.Margin_Type === "Decisive") {
@@ -53,11 +58,17 @@ async function loadAndRenderBill(rollCallId) {
     landmarkBadge.style.display = "none";
   }
 
-  document.getElementById("bill-title-header").textContent = `${bill.Bill_Number}: ${bill.Bill_Title}`;
-  document.getElementById("bill-date-val").textContent = bill.Vote_Date;
-  document.getElementById("bill-quarter-val").textContent = bill.Calendar_Quarter;
-  document.getElementById("bill-majority-val").textContent = bill.Majority_Party_At_Vote;
-  document.getElementById("bill-desc-val").textContent = bill.Description;
+  document.getElementById("bill-title-header").textContent = plainTitle;
+  document.getElementById("bill-date-val").textContent = bill.Vote_Date || "Date unavailable";
+  document.getElementById("bill-quarter-val").textContent = quarter;
+  document.getElementById("bill-majority-val").textContent = bill.Majority_Party_At_Vote || "Not enough votes yet";
+  document.getElementById("bill-desc-val").textContent = bill.Why_It_Matters || bill.Description || "";
+
+  const detailsContainer = document.getElementById("bill-plain-english-details");
+  if (detailsContainer) {
+    const counts = await VotalumeData.getVoteCountsForBill(billRollCallId);
+    detailsContainer.innerHTML = VotalumeUI.renderBillCardDetails(bill, counts, false);
+  }
 
   // Committees
   const commList = document.getElementById("bill-committees-list");
@@ -69,18 +80,32 @@ async function loadAndRenderBill(rollCallId) {
   // Tags
   const tagList = document.getElementById("bill-tags-list");
   if (tagList) {
-    const tags = (bill.Assigned_Tags || "").split(";").map((t) => t.trim()).filter(Boolean);
-    tagList.innerHTML = tags.map((t) => `<a href="bills.html?tag=${encodeURIComponent(t)}" class="tag-pill">${VotalumeUI.escapeHtml(t)}</a>`).join("");
+    const rawTags = String(bill.Tags || bill.Assigned_Tags || "");
+    const tags = rawTags.match(/\[[^\]]+\]/g) || rawTags.split(/[;,]/).map((tag) => tag.trim()).filter(Boolean);
+    tagList.innerHTML = tags.map((tag) => `<a href="bills.html?tag=${encodeURIComponent(tag)}" class="tag-pill">${VotalumeUI.escapeHtml(VotalumeData.getFriendlyTagLabel(tag))}</a>`).join("");
   }
 
   // Action Buttons
   const docBtn = document.getElementById("btn-read-doc-analysis");
-  if (docBtn) docBtn.href = bill.Doc_Reference;
+  if (docBtn) {
+    const docUrl = /^https?:\/\//i.test(String(bill.Doc_Reference || "")) ? bill.Doc_Reference : "";
+    docBtn.href = docUrl || "#";
+    docBtn.style.display = docUrl ? "inline-flex" : "none";
+  }
 
   const congBtn = document.getElementById("btn-official-congress-gov");
-  if (congBtn) congBtn.href = bill.Congress_Gov_URL;
+  if (congBtn) {
+    const officialUrl = bill.Official_Bill_Link || bill.Congress_Gov_URL || "";
+    congBtn.href = /^https?:\/\//i.test(String(officialUrl)) ? officialUrl : "#";
+    congBtn.style.display = congBtn.href === "#" ? "none" : "inline-flex";
+  }
 
-  // Party Breakdown
+  // Party subtotals are not included in Bills_Summary; never print missing sheet fields.
+  const partyBreakdown = document.getElementById("bill-party-breakdown-card");
+  const hasPartyTotals = ["GOP_Yea", "GOP_Nay", "GOP_Present", "GOP_Not_Voting", "Dem_Yea", "Dem_Nay", "Dem_Present", "Dem_Not_Voting"].every((key) => Number.isFinite(Number(bill[key])));
+  if (partyBreakdown && !hasPartyTotals) partyBreakdown.style.display = "none";
+
+  if (hasPartyTotals) {
   document.getElementById("gop-yea-val").textContent = bill.GOP_Yea;
   document.getElementById("gop-nay-val").textContent = bill.GOP_Nay;
   document.getElementById("gop-pres-val").textContent = bill.GOP_Present;
@@ -95,6 +120,7 @@ async function loadAndRenderBill(rollCallId) {
   document.getElementById("total-nay-val").textContent = bill.Nay_Count;
   document.getElementById("total-pres-val").textContent = bill.Present_Count;
   document.getElementById("total-nv-val").textContent = bill.Not_Voting_Count;
+  }
 
   // Render Legislative Action Timeline
   renderTimeline(bill);
@@ -121,9 +147,15 @@ function renderTimeline(currentBill) {
     <div class="timeline-item">
       <div class="timeline-dot final-passage"></div>
       <div style="font-weight:700; font-size:0.95rem; color:#15803D;">Roll-Call Vote on Final Passage (${currentBill.Roll_Call_ID})</div>
-      <div style="font-size:0.8rem; color:var(--color-text-muted);">Result: ${currentBill.Result} on ${currentBill.Vote_Date}</div>
+      <div style="font-size:0.8rem; color:var(--color-text-muted);">Result: ${currentBill.Outcome || currentBill.Result || "Outcome unavailable"} on ${currentBill.Vote_Date || "Date unavailable"}</div>
     </div>
   `;
+}
+
+function getCalendarQuarter(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Quarter unavailable";
+  return `${date.getFullYear()}-Q${Math.ceil((date.getMonth() + 1) / 3)}`;
 }
 
 async function renderMemberVotes(bill) {
@@ -190,8 +222,10 @@ async function renderMemberVotes(bill) {
   }
 
   [searchInput, partySelect, voteSelect].forEach((el) => {
-    el?.addEventListener("input", update);
-    el?.addEventListener("change", update);
+    if (!el || el.dataset.refreshListenerAttached) return;
+    el.addEventListener("input", update);
+    el.addEventListener("change", update);
+    el.dataset.refreshListenerAttached = "true";
   });
 
   update();

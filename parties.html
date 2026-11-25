@@ -143,8 +143,8 @@
           <div style="display: flex; flex-direction: column; gap: 1rem;">
             <div>
               <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.35rem;">
-                <span style="font-weight: 600;">Party Unity: <strong id="dem-unity-val">94.2%</strong></span>
-                <span style="color: var(--color-crossover); font-weight: 600;">Crossover Independence: <strong id="dem-crossover-val">5.8%</strong></span>
+                <span class="plain-label-stack"><span class="plain-label-main">Voted With Their Party</span><small class="plain-label-subtitle">Party Unity Score</small><strong id="dem-unity-val">94.2%</strong></span>
+                <span class="plain-label-stack" style="align-items:flex-end;text-align:right;"><span class="plain-label-main">Voted Across the Aisle</span><small class="plain-label-subtitle">Bipartisan Crossover Rate</small><strong id="dem-crossover-val">5.8%</strong></span>
               </div>
               <div class="gauge-bar-wrapper">
                 <div id="dem-unity-bar" class="gauge-bar-fill" style="background-color: var(--party-dem); width: 94.2%;"></div>
@@ -184,8 +184,8 @@
           <div style="display: flex; flex-direction: column; gap: 1rem;">
             <div>
               <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.35rem;">
-                <span style="font-weight: 600;">Party Unity: <strong id="rep-unity-val">91.8%</strong></span>
-                <span style="color: var(--color-crossover); font-weight: 600;">Crossover Independence: <strong id="rep-crossover-val">8.2%</strong></span>
+                <span class="plain-label-stack"><span class="plain-label-main">Voted With Their Party</span><small class="plain-label-subtitle">Party Unity Score</small><strong id="rep-unity-val">91.8%</strong></span>
+                <span class="plain-label-stack" style="align-items:flex-end;text-align:right;"><span class="plain-label-main">Voted Across the Aisle</span><small class="plain-label-subtitle">Bipartisan Crossover Rate</small><strong id="rep-crossover-val">8.2%</strong></span>
               </div>
               <div class="gauge-bar-wrapper">
                 <div id="rep-unity-bar" class="gauge-bar-fill" style="background-color: var(--party-rep); width: 91.8%;"></div>
@@ -219,8 +219,8 @@
 
       <!-- Lame-Duck Attendance Comparison: Lost Reelection vs. Retired (Excl Chamber Switch) -->
       <section class="card" style="margin-bottom: 2.5rem; padding: 1.75rem;">
-        <h2 style="font-size: 1.35rem; margin-bottom: 0.35rem;">
-          Lame-Duck Attendance Comparison: Lost Reelection vs. Retired
+        <h2 class="plain-label-stack" style="font-size: 1.35rem; margin-bottom: 0.35rem;">
+          <span class="plain-label-main">Attendance After Elections</span><small class="plain-label-subtitle">Post-Election Lame-Duck Rules: Defeated vs. Retired</small>
         </h2>
         <p style="color: var(--color-text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">
           Explicitly separates members defeated in November from voluntary retirees, excluding chamber-switchers who remain actively in office.
@@ -251,7 +251,7 @@
 
       <!-- 6 Composite Policy Indices Comparison Chart -->
       <section class="card" style="margin-bottom: 2.5rem; padding: 1.75rem;">
-        <h2 style="font-size: 1.35rem; margin-bottom: 0.35rem;">6 Composite Policy Indices: Democrats vs. Republicans</h2>
+        <h2 class="plain-label-stack" style="font-size: 1.35rem; margin-bottom: 0.35rem;"><span class="plain-label-main">How We Score Lawmakers</span><small class="plain-label-subtitle">6 Composite Accountability Indices</small></h2>
         <p style="color: var(--color-text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">
           Aggregate policy score comparison across all six legislative dimensions (0–100%).
         </p>
@@ -262,7 +262,7 @@
 
       <!-- Top 5 Most Loyal & Top 5 Most Independent Members per Party -->
       <section style="margin-bottom: 3rem;">
-        <h2 style="font-size: 1.35rem; margin-bottom: 1.25rem;">Party Unity Leaders & Crossover Independents</h2>
+        <h2 class="plain-label-stack" style="font-size: 1.35rem; margin-bottom: 1.25rem;"><span class="plain-label-main">Voted With Their Party & Voted Across the Aisle</span><small class="plain-label-subtitle">Party Unity Score and Bipartisan Crossover Rate</small></h2>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
           <!-- Democratic Leaders -->

@@ -169,12 +169,12 @@ const VotalumeCharts = (function() {
     ];
 
     const dataA = [
-      indicesA.economic?.score || 0,
-      indicesA.social?.score || 0,
-      indicesA.governance?.score || 0,
-      indicesA.security?.score || 0,
-      indicesA.health?.score || 0,
-      indicesA.energy?.score || 0
+      indicesA.economic?.score ?? null,
+      indicesA.social?.score ?? null,
+      indicesA.governance?.score ?? null,
+      indicesA.security?.score ?? null,
+      indicesA.health?.score ?? null,
+      indicesA.energy?.score ?? null
     ];
 
     const datasets = [
@@ -188,12 +188,12 @@ const VotalumeCharts = (function() {
 
     if (indicesB && labelB) {
       const dataB = [
-        indicesB.economic?.score || 0,
-        indicesB.social?.score || 0,
-        indicesB.governance?.score || 0,
-        indicesB.security?.score || 0,
-        indicesB.health?.score || 0,
-        indicesB.energy?.score || 0
+        indicesB.economic?.score ?? null,
+        indicesB.social?.score ?? null,
+        indicesB.governance?.score ?? null,
+        indicesB.security?.score ?? null,
+        indicesB.health?.score ?? null,
+        indicesB.energy?.score ?? null
       ];
       datasets.push({
         label: labelB,

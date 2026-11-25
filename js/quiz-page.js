@@ -10,6 +10,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   await VotalumeData.initCoreData();
 
   await initQuiz();
+  window.addEventListener("votalume:data-refreshed", async () => {
+    const refreshedQuestions = await VotalumeData.loadQuizQuestions();
+    if (Array.isArray(refreshedQuestions) && refreshedQuestions.length) {
+      quizQuestions = refreshedQuestions;
+      currentIndex = Math.min(currentIndex, quizQuestions.length - 1);
+      if (document.getElementById("quiz-reveal-box")?.style.display === "none") renderCurrentQuestion();
+    }
+  });
 });
 
 let quizQuestions = [];

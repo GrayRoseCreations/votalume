@@ -10,7 +10,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   await VotalumeData.initCoreData();
 
   initStatsStrip();
-  window.addEventListener("votalume:data-refreshed", initStatsStrip);
+  window.addEventListener("votalume:data-refreshed", async () => {
+    initStatsStrip();
+    await renderFeaturedLawmakers();
+    await renderFeaturedBills();
+  });
   initFinderTabs();
   initDistrictFinder();
   await renderFeaturedLawmakers();
@@ -227,11 +231,11 @@ function createLawmakerCard(m, titleRole) {
     <div class="member-metrics-mini">
       <div class="metric-mini-item">
         <span class="stat-label">Regular Attendance</span>
-        <span class="metric-mini-val">${m.Regular_Attendance_Pct || "96%"}</span>
+        <span class="metric-mini-val">${VotalumeUI.escapeHtml(m.Regular_Attendance_Pct || "Not enough votes yet")}</span>
       </div>
       <div class="metric-mini-item">
-        <span class="stat-label">Party Unity</span>
-        <span class="metric-mini-val">${m.Party_Unity_Pct || "94%"}</span>
+        <span class="plain-label-stack"><span class="plain-label-main">Voted With Their Party</span><small class="plain-label-subtitle">Party Unity Score</small></span>
+        <span class="metric-mini-val">${VotalumeUI.escapeHtml(m.Party_Unity_Pct || "Not enough votes yet")}</span>
       </div>
     </div>
 
@@ -264,8 +268,9 @@ async function renderFeaturedLawmakers() {
         </div>
         <div class="member-card-info">
           <h3><a href="member.html?id=${p.memberId}">${VotalumeUI.escapeHtml(p.name)}</a></h3>
-          <div style="font-size: 0.775rem; color: var(--color-civic-navy); font-weight: 600; margin-top: 0.15rem;">
-            ${p.careerTitle}
+          <div style="font-size:0.775rem;color:var(--color-civic-navy);font-weight:600;margin-top:0.15rem;">
+            ${p.isChamberSwitcher ? '<span class="plain-label-stack"><span class="plain-label-main">Served in House & Senate</span><small class="plain-label-subtitle">Cross-Chamber Career Record</small></span>' : VotalumeUI.escapeHtml(p.careerTitle)}
+            ${p.isChamberSwitcher ? `<small class="plain-label-subtitle">${VotalumeUI.escapeHtml(p.careerTitle)}</small>` : ""}
           </div>
           <div style="margin-top: 0.35rem; display: flex; gap: 0.35rem; flex-wrap: wrap;">
             <span class="badge ${partyBadge}">${p.party}</span>
@@ -280,7 +285,7 @@ async function renderFeaturedLawmakers() {
           <span class="metric-mini-val">${p.regularAttendancePct}</span>
         </div>
         <div class="metric-mini-item">
-          <span class="stat-label">Crossover Vote</span>
+          <span class="plain-label-stack"><span class="plain-label-main">Voted Across the Aisle</span><small class="plain-label-subtitle">Bipartisan Crossover Rate</small></span>
           <span class="metric-mini-val" style="color: var(--color-crossover);">${p.crossoverVotePct}</span>
         </div>
       </div>
@@ -298,38 +303,24 @@ async function renderFeaturedBills() {
   if (!container) return;
 
   const bills = await VotalumeData.getAllBills();
-  container.innerHTML = "";
-
-  bills.slice(0, 3).forEach((b) => {
+  const featuredBills = bills.slice(0, 3);
+  const voteCounts = await Promise.all(featuredBills.map((bill) => VotalumeData.getVoteCountsForBill(bill.Roll_Call_ID)));
+  container.innerHTML = featuredBills.map((b, index) => {
     const card = document.createElement("div");
     card.className = "card";
-
-    const tagsList = (b.Assigned_Tags || "").split(";").map((t) => t.trim()).filter(Boolean);
-
+    const billUrl = `bill.html?id=${encodeURIComponent(b.Roll_Call_ID || "")}`;
+    const officialUrl = /^https?:\/\//i.test(String(b.Official_Bill_Link || "")) ? b.Official_Bill_Link : "";
     card.innerHTML = `
-      <div class="card-header">
-        <div>
-          <span class="badge badge-gold" style="margin-bottom: 0.35rem;">${b.Chamber} • ${b.Margin_Type}</span>
-          <h3 class="card-title" style="font-size: 1.15rem;">
-            <a href="bill.html?id=${b.Roll_Call_ID}">${b.Bill_Number}: ${VotalumeUI.escapeHtml(b.Bill_Title)}</a>
-          </h3>
-          <div class="card-subtitle">Voted ${b.Vote_Date} • Result: <strong>${b.Result}</strong></div>
-        </div>
-      </div>
-
-      <p style="font-size: 0.85rem; color: var(--color-text-secondary); margin-bottom: 1rem; line-height: 1.5;">
-        ${VotalumeUI.escapeHtml(b.Description)}
-      </p>
-
-      <div style="display: flex; gap: 0.35rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
-        ${tagsList.slice(0, 3).map((t) => `<span class="tag-pill">${VotalumeUI.escapeHtml(t)}</span>`).join("")}
-      </div>
-
-      <div style="margin-top: auto; display: flex; gap: 0.5rem;">
-        <a href="bill.html?id=${b.Roll_Call_ID}" class="btn btn-primary btn-sm" style="flex: 1;">Roll Call Breakdown →</a>
-        <a href="${b.Doc_Reference}" class="btn btn-secondary btn-sm" target="_blank" rel="noopener">Neutral Analysis (Doc)</a>
-      </div>
+      <div class="card-header"><div>
+        <span class="badge badge-gold" style="margin-bottom:0.35rem;">${VotalumeUI.escapeHtml(b.Chamber || "Congress")}</span>
+        <h3 class="card-title" style="font-size:1.15rem;"><a href="${billUrl}">${VotalumeUI.escapeHtml(b.Plain_English_Title || b.Bill_Number || "Bill details")}</a></h3>
+        <div class="card-subtitle">${VotalumeUI.escapeHtml([b.Bill_Number, b.Roll_Call_ID, b.Vote_Category].filter(Boolean).join(" • "))}</div>
+      </div></div>
+      <p style="font-size:0.9rem;color:var(--color-text-secondary);margin:0.65rem 0;">${VotalumeUI.escapeHtml(b.Why_It_Matters || "")}</p>
+      ${VotalumeUI.renderBillCardDetails(b, voteCounts[index])}
+      <a href="${billUrl}" class="btn btn-primary btn-sm">See Lawmaker Votes</a>
+      ${officialUrl ? `<a href="${VotalumeUI.escapeHtml(officialUrl)}" class="btn btn-secondary btn-sm" target="_blank" rel="noopener">Official Record ↗</a>` : ""}
     `;
-    container.appendChild(card);
-  });
+    return card.outerHTML;
+  }).join("");
 }

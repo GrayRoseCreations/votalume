@@ -12,10 +12,20 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   initStateFilter();
   setupFilterListeners();
+  window.addEventListener("votalume:data-refreshed", renderLawmakers);
   renderLawmakers();
 });
 
 let allLawmakers = [];
+
+function displayMetric(value) {
+  return value !== undefined && value !== null && String(value).trim() !== "" ? String(value).trim() : "Not enough votes yet";
+}
+
+function numericMetric(value) {
+  const parsed = parseFloat(String(value || ""));
+  return Number.isFinite(parsed) ? parsed : null;
+}
 
 function initStateFilter() {
   const stateSelect = document.getElementById("filter-state-select");
@@ -76,14 +86,14 @@ async function prepareLawmakersList() {
       isChamberSwitcher: false,
       careerTitle: `U.S. Senator (${m.State})`,
       photoUrl: m.Photo_URL || `https://bioguide.congress.gov/bioguide/photo/${id[0]}/${id}.jpg`,
-      regularAttendance: parseFloat(m.Regular_Attendance_Pct) || 95.0,
-      regularAttendancePct: m.Regular_Attendance_Pct || "95.0%",
-      lameDuckAttendance: parseFloat(m.Lame_Duck_Attendance_Pct) || 92.0,
-      lameDuckAttendancePct: m.Lame_Duck_Attendance_Pct || "92.0%",
-      partyUnity: parseFloat(m.Party_Unity_Pct) || 95.0,
-      partyUnityPct: m.Party_Unity_Pct || "95.0%",
-      crossoverVote: parseFloat(m.Crossover_Vote_Pct) || 5.0,
-      crossoverVotePct: m.Crossover_Vote_Pct || "5.0%"
+      regularAttendance: numericMetric(m.Regular_Attendance_Pct),
+      regularAttendancePct: displayMetric(m.Regular_Attendance_Pct),
+      lameDuckAttendance: numericMetric(m.Lame_Duck_Attendance_Pct || m.Lame_Duck_Attendance),
+      lameDuckAttendancePct: displayMetric(m.Lame_Duck_Attendance_Pct || m.Lame_Duck_Attendance),
+      partyUnity: numericMetric(m.Party_Unity_Pct || m.Party_Unity),
+      partyUnityPct: displayMetric(m.Party_Unity_Pct || m.Party_Unity),
+      crossoverVote: numericMetric(m.Crossover_Vote_Pct || m.Crossover_Vote),
+      crossoverVotePct: displayMetric(m.Crossover_Vote_Pct || m.Crossover_Vote)
     });
   });
 
@@ -110,14 +120,14 @@ async function prepareLawmakersList() {
         isChamberSwitcher: m.Departure_Reason === "Chamber Switch",
         careerTitle: `U.S. Representative (${m.State}-${m.District})`,
         photoUrl: m.Photo_URL || `https://bioguide.congress.gov/bioguide/photo/${id[0]}/${id}.jpg`,
-        regularAttendance: parseFloat(m.Regular_Attendance_Pct) || 95.0,
-        regularAttendancePct: m.Regular_Attendance_Pct || "95.0%",
-        lameDuckAttendance: parseFloat(m.Lame_Duck_Attendance_Pct) || 92.0,
-        lameDuckAttendancePct: m.Lame_Duck_Attendance_Pct || "92.0%",
-        partyUnity: parseFloat(m.Party_Unity_Pct) || 95.0,
-        partyUnityPct: m.Party_Unity_Pct || "95.0%",
-        crossoverVote: parseFloat(m.Crossover_Vote_Pct) || 5.0,
-        crossoverVotePct: m.Crossover_Vote_Pct || "5.0%"
+        regularAttendance: numericMetric(m.Regular_Attendance_Pct),
+        regularAttendancePct: displayMetric(m.Regular_Attendance_Pct),
+        lameDuckAttendance: numericMetric(m.Lame_Duck_Attendance_Pct || m.Lame_Duck_Attendance),
+        lameDuckAttendancePct: displayMetric(m.Lame_Duck_Attendance_Pct || m.Lame_Duck_Attendance),
+        partyUnity: numericMetric(m.Party_Unity_Pct || m.Party_Unity),
+        partyUnityPct: displayMetric(m.Party_Unity_Pct || m.Party_Unity),
+        crossoverVote: numericMetric(m.Crossover_Vote_Pct || m.Crossover_Vote),
+        crossoverVotePct: displayMetric(m.Crossover_Vote_Pct || m.Crossover_Vote)
       });
     }
   });
@@ -200,11 +210,13 @@ async function renderLawmakers() {
 
   tbody.innerHTML = filtered.map((m) => {
     const partyBadge = m.party === "Democratic" ? "badge-dem" : m.party === "Republican" ? "badge-rep" : "badge-ind";
-    const drop = m.regularAttendance - m.lameDuckAttendance;
+    const drop = m.regularAttendance !== null && m.lameDuckAttendance !== null
+      ? m.regularAttendance - m.lameDuckAttendance
+      : null;
     let lameDuckBadge = "";
-    if (drop >= 20) {
+    if (drop !== null && drop >= 20) {
       lameDuckBadge = `<span class="badge badge-alert" title="Attendance dropped ≥20% during post-election lame-duck session">Lame-Duck Drop-Off</span>`;
-    } else if (m.lameDuckAttendance >= 90) {
+    } else if (m.lameDuckAttendance !== null && m.lameDuckAttendance >= 90) {
       lameDuckBadge = `<span class="badge badge-gold" title="Maintained ≥90% attendance through final bell">Served Through Final Bell</span>`;
     }
 

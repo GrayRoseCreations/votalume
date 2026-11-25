@@ -13,6 +13,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await loadAndRenderMember(memberId);
   setupBookmarkButton(memberId);
+  window.addEventListener("votalume:data-refreshed", () => loadAndRenderMember(memberId));
 });
 
 async function loadAndRenderMember(memberId) {
@@ -43,9 +44,11 @@ async function loadAndRenderMember(memberId) {
   // Career Banner
   const careerBanner = document.getElementById("career-title-banner");
   if (careerBanner) {
-    careerBanner.textContent = profile.careerTitle;
     if (profile.isChamberSwitcher) {
+      careerBanner.innerHTML = `<span class="plain-label-stack"><span class="plain-label-main">Served in House & Senate</span><small class="plain-label-subtitle">Cross-Chamber Career Record</small></span><span class="career-detail">${VotalumeUI.escapeHtml(profile.careerTitle)}</span>`;
       careerBanner.title = "Continuous cross-chamber profile combining House and Senate tenures.";
+    } else {
+      careerBanner.textContent = profile.careerTitle;
     }
   }
 
@@ -93,21 +96,23 @@ async function loadAndRenderMember(memberId) {
   }
 
   // --- Separated Attendance & Lame-Duck Gauges ---
-  const regAtt = parseFloat(profile.regularAttendancePct) || 95;
-  const lameAtt = parseFloat(profile.lameDuckAttendancePct) || 92;
-  const recentAtt = parseFloat(profile.recentAttendance20Pct) || 95;
+  const regAtt = parsePercent(profile.regularAttendancePct);
+  const lameAtt = parsePercent(profile.lameDuckAttendancePct);
+  const recentAtt = parsePercent(profile.recentAttendance20Pct);
 
   document.getElementById("gauge-regular-val").textContent = profile.regularAttendancePct;
   const regFill = document.getElementById("gauge-regular-fill");
-  if (regFill) regFill.style.width = `${Math.min(regAtt, 100)}%`;
+  if (regFill) regFill.style.width = `${regAtt === null ? 0 : Math.min(regAtt, 100)}%`;
 
   document.getElementById("gauge-lameduck-val").textContent = profile.lameDuckAttendancePct;
 
   // Lame-Duck Badge
   const lameBadgeContainer = document.getElementById("lameduck-badge-container");
   if (lameBadgeContainer) {
-    const drop = regAtt - lameAtt;
-    if (drop >= 20) {
+    const drop = regAtt !== null && lameAtt !== null ? regAtt - lameAtt : null;
+    if (drop === null) {
+      lameBadgeContainer.innerHTML = `<span class="badge badge-neutral">Not enough votes yet</span>`;
+    } else if (drop >= 20) {
       lameBadgeContainer.innerHTML = `<span class="badge badge-alert">⚠️ Lame-Duck Drop-Off (-${drop.toFixed(1)}%)</span>`;
     } else if (lameAtt >= 90) {
       lameBadgeContainer.innerHTML = `<span class="badge badge-gold">★ Served Through Final Bell</span>`;
@@ -120,7 +125,9 @@ async function loadAndRenderMember(memberId) {
   document.getElementById("gauge-present-val").textContent = profile.presentRatePct;
   const recentAlertContainer = document.getElementById("recent-absence-alert-container");
   if (recentAlertContainer) {
-    if (recentAtt < 75) {
+    if (recentAtt === null) {
+      recentAlertContainer.innerHTML = `<span class="badge badge-neutral">Not enough votes yet</span>`;
+    } else if (recentAtt < 75) {
       recentAlertContainer.innerHTML = `<span class="badge badge-alert">Recent Absence Alert (${recentAtt}% past 20 votes)</span>`;
     } else {
       recentAlertContainer.innerHTML = `<span class="badge badge-neutral">Recent 20 Votes: ${profile.recentAttendance20Pct}</span>`;
@@ -135,12 +142,14 @@ async function loadAndRenderMember(memberId) {
   document.getElementById("pres-own-party-val").textContent = profile.presSupportInPartyPct;
   document.getElementById("pres-own-party-sample").textContent = `n = ${profile.presSupportInPartyN}`;
   const ownFill = document.getElementById("pres-own-bar-fill");
-  if (ownFill) ownFill.style.width = `${parseFloat(profile.presSupportInPartyPct) || 90}%`;
+  const ownSupport = parsePercent(profile.presSupportInPartyPct);
+  if (ownFill) ownFill.style.width = `${ownSupport === null ? 0 : ownSupport}%`;
 
   document.getElementById("pres-opp-party-val").textContent = profile.presSupportOppositionPct;
   document.getElementById("pres-opp-party-sample").textContent = `n = ${profile.presSupportOppositionN}`;
   const oppFill = document.getElementById("pres-opp-bar-fill");
-  if (oppFill) oppFill.style.width = `${parseFloat(profile.presSupportOppositionPct) || 15}%`;
+  const oppositionSupport = parsePercent(profile.presSupportOppositionPct);
+  if (oppFill) oppFill.style.width = `${oppositionSupport === null ? 0 : oppositionSupport}%`;
 
   // --- 6 Composite Policy Indices ---
   const idx = profile.indices;
@@ -172,13 +181,29 @@ function renderIndexCard(prefix, data) {
   const sampleEl = document.getElementById(`${prefix}-sample`);
   const barEl = document.getElementById(`${prefix}-bar`);
 
-  if (scoreEl) scoreEl.textContent = `${Math.round(data.score)}%`;
-  if (sampleEl) sampleEl.textContent = `n = ${data.n}`;
-  if (barEl) barEl.style.width = `${Math.min(data.score, 100)}%`;
+  const hasScore = Number.isFinite(data.score);
+  if (scoreEl) {
+    scoreEl.textContent = hasScore ? `${Math.round(data.score)}%` : "Not enough votes yet";
+    scoreEl.style.fontSize = hasScore ? "" : "0.9rem";
+    scoreEl.style.fontFamily = hasScore ? "" : "inherit";
+  }
+  if (sampleEl) sampleEl.textContent = data.n === "Not enough votes yet" ? data.n : `n = ${data.n}`;
+  if (barEl) barEl.style.width = `${hasScore ? Math.max(0, Math.min(data.score, 100)) : 0}%`;
+}
+
+function parsePercent(value) {
+  const parsed = parseFloat(String(value || ""));
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function renderFinancialCard(profile) {
   const extras = profile.extras || {};
+  const financialCard = document.querySelector(".financial-card");
+  if (!Object.keys(extras).length) {
+    if (financialCard) financialCard.style.display = "none";
+    return;
+  }
+  if (financialCard) financialCard.style.display = "block";
   const portfolioBadge = document.getElementById("portfolio-status-badge");
   const portfolioStatus = extras.Portfolio_Disclosure_Status || "Diversified Funds / Blind Trust Only";
 
@@ -245,7 +270,10 @@ async function renderRollCallsTable(memberId) {
       const memberVote = votesMap[String(memberId).toUpperCase()] || "Not recorded";
 
       const voteBadgeClass = memberVote === "Yea" ? "badge-yea" : memberVote === "Nay" ? "badge-nay" : memberVote === "Present" ? "badge-present" : "badge-neutral";
-      const tags = (b.Assigned_Tags || "").split(";").map((t) => t.trim()).slice(0, 2);
+      const tagsText = String(b.Tags || b.Assigned_Tags || "");
+      const tags = (tagsText.match(/\[[^\]]+\]/g) || tagsText.split(/[;,]/).map((tag) => tag.trim()).filter(Boolean))
+        .slice(0, 2)
+        .map((tag) => VotalumeData.getFriendlyTagLabel(tag));
 
       rows.push(`
         <tr>
@@ -278,7 +306,10 @@ async function renderRollCallsTable(memberId) {
     }
   }
 
-  filterType?.addEventListener("change", updateTable);
+  if (filterType && !filterType.dataset.refreshListenerAttached) {
+    filterType.addEventListener("change", updateTable);
+    filterType.dataset.refreshListenerAttached = "true";
+  }
   updateTable();
 }
 

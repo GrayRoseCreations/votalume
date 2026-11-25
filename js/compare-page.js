@@ -77,6 +77,8 @@ function setupEventListeners() {
       updateComparison(idA, idB);
     });
   });
+
+  window.addEventListener("votalume:data-refreshed", () => updateComparison(selectA?.value, selectB?.value));
 }
 
 async function updateComparison(idA, idB) {
@@ -147,13 +149,15 @@ function renderMetricsTable(a, b) {
       note: "Post-election accountability"
     },
     {
-      metric: "Party Unity Score",
+      metric: "Voted With Their Party",
+      subtitle: "Party Unity Score",
       valA: a.partyUnityPct,
       valB: b.partyUnityPct,
       note: "Votes with party majority"
     },
     {
-      metric: "Crossover Independence Rate",
+      metric: "Voted Across the Aisle",
+      subtitle: "Bipartisan Crossover Rate",
       valA: `<span style="font-weight:700; color:var(--color-crossover);">${a.crossoverVotePct}</span>`,
       valB: `<span style="font-weight:700; color:var(--color-crossover);">${b.crossoverVotePct}</span>`,
       note: "Votes breaking with caucus"
@@ -186,7 +190,7 @@ function renderMetricsTable(a, b) {
 
   tbody.innerHTML = rows.map((r) => `
     <tr>
-      <td class="table-sticky-col"><strong>${r.metric}</strong></td>
+      <td class="table-sticky-col"><span class="plain-label-stack"><strong class="plain-label-main">${r.metric}</strong>${r.subtitle ? `<small class="plain-label-subtitle">${r.subtitle}</small>` : ""}</span></td>
       <td>${r.valA}</td>
       <td>${r.valB}</td>
       <td style="font-size:0.8rem; color:var(--color-text-muted);">${r.note}</td>
@@ -211,7 +215,10 @@ async function renderDisagreements(a, b) {
     if (voteA !== voteB && ["Yea", "Nay"].includes(voteA) && ["Yea", "Nay"].includes(voteB)) {
       const badgeA = voteA === "Yea" ? "badge-yea" : "badge-nay";
       const badgeB = voteB === "Yea" ? "badge-yea" : "badge-nay";
-      const tags = (bill.Assigned_Tags || "").split(";").map((t) => t.trim()).slice(0, 2);
+      const tagsText = String(bill.Tags || bill.Assigned_Tags || "");
+      const tags = (tagsText.match(/\[[^\]]+\]/g) || tagsText.split(/[;,]/).map((tag) => tag.trim()).filter(Boolean))
+        .slice(0, 2)
+        .map((tag) => VotalumeData.getFriendlyTagLabel(tag));
 
       disagreeRows.push(`
         <tr>

@@ -6,6 +6,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   VotalumeUI.initCommon();
   VotalumeAuth.init();
   await VotalumeData.initCoreData();
+  VotalumeUI.updateTagTaxonomyLabels();
 
   await renderTaxonomy();
   await renderPublicChangelog();
@@ -18,13 +19,16 @@ async function renderTaxonomy() {
 
   const rawTags = await VotalumeData.loadTab("TAG_DEFINITIONS");
   
+  const activeTags = (rawTags || []).filter((row) => /active/i.test(`${row.House_Status || ""} ${row.Senate_Status || ""}`));
   if (countBadge && Array.isArray(rawTags)) {
-    countBadge.textContent = `${rawTags.length} Active Tags`;
+    countBadge.textContent = `${activeTags.length} Active Tags`;
   }
+  const taxonomySubtitle = document.querySelector("#taxonomy .plain-label-subtitle");
+  if (taxonomySubtitle) taxonomySubtitle.textContent = `${activeTags.length}-Tag Legislative Taxonomy`;
 
   // Group tags by Category
   const categories = {};
-  rawTags.forEach((row) => {
+  activeTags.forEach((row) => {
     const cat = row.Category || "General Legislative Alignment";
     if (!categories[cat]) categories[cat] = [];
     categories[cat].push(row);
@@ -37,8 +41,9 @@ async function renderTaxonomy() {
       </h3>
       <div style="display: flex; gap: 0.45rem; flex-wrap: wrap;">
         ${tags.map((t) => `
-          <div class="tag-pill" style="font-size: 0.8rem; padding: 0.3rem 0.65rem;" title="House: ${t.House_Status || 'Active'} | Senate: ${t.Senate_Status || 'Active'}">
-            <strong>${VotalumeUI.escapeHtml(t.Tag)}</strong>
+          <div class="tag-pill plain-label-stack" style="font-size:0.8rem;padding:0.3rem 0.65rem;" title="House: ${t.House_Status || 'Active'} | Senate: ${t.Senate_Status || 'Active'}">
+            <strong>${VotalumeUI.escapeHtml(t.Voter_Friendly_Label || t.Tag)}</strong>
+            <small class="plain-label-subtitle">${VotalumeUI.escapeHtml(t.Tag)}</small>
           </div>
         `).join("")}
       </div>

@@ -8,6 +8,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await VotalumeData.initCoreData();
 
   setupScopeListener();
+  window.addEventListener("votalume:data-refreshed", () => renderParties(document.getElementById("party-chamber-scope")?.value || "Combined"));
   renderParties("Combined");
 });
 
@@ -16,6 +17,15 @@ function setupScopeListener() {
   scopeSelect?.addEventListener("change", (e) => {
     renderParties(e.target.value);
   });
+}
+
+function displayPartyMetric(value) {
+  return value !== undefined && value !== null && String(value).trim() !== "" ? String(value).trim() : "Not enough votes yet";
+}
+
+function scorePartyMetric(value) {
+  const parsed = parseFloat(String(value || ""));
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 async function renderParties(scope = "Combined") {
@@ -31,56 +41,56 @@ async function renderParties(scope = "Combined") {
   const repData = comparisonData.find((p) => p.Party_Caucus === "Republican") || {};
 
   // Update Democratic metrics
-  document.getElementById("dem-active-count").textContent = `${demData.Active_Member_Count || '258'} Members`;
-  document.getElementById("dem-unity-val").textContent = demData.Party_Unity_Pct || "94.2%";
-  document.getElementById("dem-crossover-val").textContent = demData.Crossover_Vote_Pct || "5.8%";
-  document.getElementById("dem-unity-bar").style.width = demData.Party_Unity_Pct || "94.2%";
+  document.getElementById("dem-active-count").textContent = demData.Active_Member_Count ? `${demData.Active_Member_Count} Members` : "Not enough votes yet";
+  document.getElementById("dem-unity-val").textContent = displayPartyMetric(demData.Party_Unity_Pct);
+  document.getElementById("dem-crossover-val").textContent = displayPartyMetric(demData.Crossover_Vote_Pct);
+  document.getElementById("dem-unity-bar").style.width = `${scorePartyMetric(demData.Party_Unity_Pct) ?? 0}%`;
 
-  document.getElementById("dem-voted-val").textContent = demData.Voted_Pct || "97.4%";
-  document.getElementById("dem-present-val").textContent = demData.Present_Pct || "0.2%";
-  document.getElementById("dem-nv-val").textContent = demData.Not_Voting_Pct || "2.4%";
+  document.getElementById("dem-voted-val").textContent = displayPartyMetric(demData.Voted_Pct);
+  document.getElementById("dem-present-val").textContent = displayPartyMetric(demData.Present_Pct);
+  document.getElementById("dem-nv-val").textContent = displayPartyMetric(demData.Not_Voting_Pct);
 
-  document.getElementById("dem-reg-att-val").textContent = demData.Regular_Attendance_Pct || "97.6%";
-  document.getElementById("dem-pres-own-val").textContent = demData.Pres_Support_In_Party_Pct || "95.8%";
-  document.getElementById("dem-pres-opp-val").textContent = demData.Pres_Support_Opposition_Pct || "14.2%";
+  document.getElementById("dem-reg-att-val").textContent = displayPartyMetric(demData.Regular_Attendance_Pct);
+  document.getElementById("dem-pres-own-val").textContent = displayPartyMetric(demData.Pres_Support_In_Party_Pct);
+  document.getElementById("dem-pres-opp-val").textContent = displayPartyMetric(demData.Pres_Support_Opposition_Pct);
 
-  document.getElementById("dem-lost-att-val").textContent = demData.Lame_Duck_Attendance_Lost_Pct || "84.2%";
-  document.getElementById("dem-ret-att-val").textContent = demData.Lame_Duck_Attendance_Retired_Pct || "87.5%";
+  document.getElementById("dem-lost-att-val").textContent = displayPartyMetric(demData.Lame_Duck_Attendance_Lost_Pct);
+  document.getElementById("dem-ret-att-val").textContent = displayPartyMetric(demData.Lame_Duck_Attendance_Retired_Pct);
 
   // Update Republican metrics
-  document.getElementById("rep-active-count").textContent = `${repData.Active_Member_Count || '269'} Members`;
-  document.getElementById("rep-unity-val").textContent = repData.Party_Unity_Pct || "91.8%";
-  document.getElementById("rep-crossover-val").textContent = repData.Crossover_Vote_Pct || "8.2%";
-  document.getElementById("rep-unity-bar").style.width = repData.Party_Unity_Pct || "91.8%";
+  document.getElementById("rep-active-count").textContent = repData.Active_Member_Count ? `${repData.Active_Member_Count} Members` : "Not enough votes yet";
+  document.getElementById("rep-unity-val").textContent = displayPartyMetric(repData.Party_Unity_Pct);
+  document.getElementById("rep-crossover-val").textContent = displayPartyMetric(repData.Crossover_Vote_Pct);
+  document.getElementById("rep-unity-bar").style.width = `${scorePartyMetric(repData.Party_Unity_Pct) ?? 0}%`;
 
-  document.getElementById("rep-voted-val").textContent = repData.Voted_Pct || "96.8%";
-  document.getElementById("rep-present-val").textContent = repData.Present_Pct || "0.3%";
-  document.getElementById("rep-nv-val").textContent = repData.Not_Voting_Pct || "2.9%";
+  document.getElementById("rep-voted-val").textContent = displayPartyMetric(repData.Voted_Pct);
+  document.getElementById("rep-present-val").textContent = displayPartyMetric(repData.Present_Pct);
+  document.getElementById("rep-nv-val").textContent = displayPartyMetric(repData.Not_Voting_Pct);
 
-  document.getElementById("rep-reg-att-val").textContent = repData.Regular_Attendance_Pct || "97.1%";
-  document.getElementById("rep-pres-own-val").textContent = repData.Pres_Support_In_Party_Pct || "92.4%";
-  document.getElementById("rep-pres-opp-val").textContent = repData.Pres_Support_Opposition_Pct || "19.8%";
+  document.getElementById("rep-reg-att-val").textContent = displayPartyMetric(repData.Regular_Attendance_Pct);
+  document.getElementById("rep-pres-own-val").textContent = displayPartyMetric(repData.Pres_Support_In_Party_Pct);
+  document.getElementById("rep-pres-opp-val").textContent = displayPartyMetric(repData.Pres_Support_Opposition_Pct);
 
-  document.getElementById("rep-lost-att-val").textContent = repData.Lame_Duck_Attendance_Lost_Pct || "78.4%";
-  document.getElementById("rep-ret-att-val").textContent = repData.Lame_Duck_Attendance_Retired_Pct || "81.0%";
+  document.getElementById("rep-lost-att-val").textContent = displayPartyMetric(repData.Lame_Duck_Attendance_Lost_Pct);
+  document.getElementById("rep-ret-att-val").textContent = displayPartyMetric(repData.Lame_Duck_Attendance_Retired_Pct);
 
   // Render 6 Composite Indices Bar Chart
   const demIndices = {
-    economic: { score: parseFloat(demData.Index_Economic_Fiscal_Pct) || 22 },
-    social: { score: parseFloat(demData.Index_Social_Rights_Pct) || 92 },
-    governance: { score: parseFloat(demData.Index_Gov_Oversight_Pct) || 85 },
-    security: { score: parseFloat(demData.Index_Security_Foreign_Pct) || 64 },
-    health: { score: parseFloat(demData.Index_Health_Entitlements_Pct) || 93 },
-    energy: { score: parseFloat(demData.Index_Energy_Tech_Ag_Pct) || 27 }
+    economic: { score: scorePartyMetric(demData.Index_Economic_Fiscal_Pct) },
+    social: { score: scorePartyMetric(demData.Index_Social_Rights_Pct) },
+    governance: { score: scorePartyMetric(demData.Index_Gov_Oversight_Pct) },
+    security: { score: scorePartyMetric(demData.Index_Security_Foreign_Pct) },
+    health: { score: scorePartyMetric(demData.Index_Health_Entitlements_Pct) },
+    energy: { score: scorePartyMetric(demData.Index_Energy_Tech_Ag_Pct) }
   };
 
   const repIndices = {
-    economic: { score: parseFloat(repData.Index_Economic_Fiscal_Pct) || 88 },
-    social: { score: parseFloat(repData.Index_Social_Rights_Pct) || 16 },
-    governance: { score: parseFloat(repData.Index_Gov_Oversight_Pct) || 79 },
-    security: { score: parseFloat(repData.Index_Security_Foreign_Pct) || 85 },
-    health: { score: parseFloat(repData.Index_Health_Entitlements_Pct) || 23 },
-    energy: { score: parseFloat(repData.Index_Energy_Tech_Ag_Pct) || 87 }
+    economic: { score: scorePartyMetric(repData.Index_Economic_Fiscal_Pct) },
+    social: { score: scorePartyMetric(repData.Index_Social_Rights_Pct) },
+    governance: { score: scorePartyMetric(repData.Index_Gov_Oversight_Pct) },
+    security: { score: scorePartyMetric(repData.Index_Security_Foreign_Pct) },
+    health: { score: scorePartyMetric(repData.Index_Health_Entitlements_Pct) },
+    energy: { score: scorePartyMetric(repData.Index_Energy_Tech_Ag_Pct) }
   };
 
   VotalumeCharts.renderIndicesBarChart("parties-indices-chart", demIndices, "Democratic Caucus", repIndices, "Republican Caucus");
@@ -112,7 +122,7 @@ function renderLeaderList(containerId, list, fieldKey, type) {
   if (!container) return;
 
   container.innerHTML = list.map((m, idx) => {
-    const val = m[fieldKey] || "0%";
+    const val = displayPartyMetric(m[fieldKey]);
     const color = type === "crossover" ? "var(--color-crossover)" : "var(--color-civic-navy)";
     return `
       <div style="display:flex; justify-content:space-between; align-items:center; padding: 0.35rem 0; border-bottom: 1px solid var(--color-border);">

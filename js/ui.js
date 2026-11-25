@@ -11,9 +11,29 @@ const VotalumeUI = (function() {
     setupAuthModal();
     setupCacheNoticeListener();
     highlightActiveNavLink();
+    setupPlainEnglishNavigation();
     setupGlobalSupportActions();
     setupDiscrepancyModal();
     setupLiveDataRefresh();
+  }
+
+  function setupPlainEnglishNavigation() {
+    const guideLink = document.querySelector('.primary-nav a[href="guide.html"]');
+    if (guideLink) {
+      guideLink.innerHTML = '<span class="plain-label-stack"><span class="plain-label-main">Topic & Issue Guide</span><small class="plain-label-subtitle">73-Tag Legislative Taxonomy</small></span>';
+    }
+    const footer = document.querySelector(".site-footer");
+    footer?.querySelectorAll('a[href="guide.html"], a[href="guide.html#indices"], a[href="guide.html#attendance"], a[href="guide.html#chamber-switchers"]').forEach((link) => {
+      const href = link.getAttribute("href");
+      const content = href.endsWith("#indices")
+        ? ["How We Score Lawmakers", "6 Composite Accountability Indices"]
+        : href.endsWith("#attendance")
+          ? ["Attendance After Elections", "Post-Election Lame-Duck Rules"]
+          : href.endsWith("#chamber-switchers")
+            ? ["Served in House & Senate", "Cross-Chamber Career Record"]
+            : ["Topic & Issue Guide", "73-Tag Legislative Taxonomy"];
+      link.innerHTML = `<span class="plain-label-stack"><span class="plain-label-main">${content[0]}</span><small class="plain-label-subtitle">${content[1]}</small></span>`;
+    });
   }
 
   function setupGlobalSupportActions() {
@@ -23,7 +43,8 @@ const VotalumeUI = (function() {
       const supportLink = document.createElement("a");
       supportLink.href = "donate.html";
       supportLink.className = "nav-link";
-      supportLink.textContent = "Support / Donate";
+      supportLink.setAttribute("aria-label", "Support Votalume / Donate");
+      supportLink.innerHTML = '<span class="plain-label-stack"><span class="plain-label-main">Support Votalume</span><small class="plain-label-subtitle">Donate</small></span>';
       if ((window.location.pathname.split("/").pop() || "index.html") === "donate.html") supportLink.classList.add("active");
       nav.appendChild(supportLink);
     }
@@ -108,8 +129,14 @@ const VotalumeUI = (function() {
 
     window.addEventListener("votalume:cache-status", (e) => {
       const isCached = e.detail?.isCached;
+      updateTagTaxonomyLabels();
       if (banner) {
-        banner.style.display = isCached ? "flex" : "none";
+        banner.style.display = "flex";
+        banner.querySelector("span:last-child")?.replaceChildren(document.createTextNode(
+          isCached
+            ? "Showing cached civic database. Master Google Sheet sync in progress."
+            : "Live Civic Database Connected • Official Congressional Records"
+        ));
       }
       if (liveBadge) {
         if (isCached) {
@@ -121,6 +148,17 @@ const VotalumeUI = (function() {
           liveBadge.style.color = "#86EFAC";
           liveBadge.style.borderColor = "rgba(134, 239, 172, 0.3)";
         }
+      }
+    });
+  }
+
+  function updateTagTaxonomyLabels() {
+    const definitions = window.VotalumeData?.getStore().Tag_Definitions || [];
+    if (!definitions.length) return;
+    const activeCount = definitions.filter((row) => /active/i.test(`${row.House_Status || ""} ${row.Senate_Status || ""}`)).length;
+    document.querySelectorAll(".plain-label-subtitle").forEach((label) => {
+      if (/^\d+-Tag Legislative Taxonomy$/.test(label.textContent.trim())) {
+        label.textContent = `${activeCount}-Tag Legislative Taxonomy`;
       }
     });
   }
@@ -243,7 +281,7 @@ const VotalumeUI = (function() {
         results.push({
           type: "Lawmaker",
           title: `${name} (${party.charAt(0)} – ${district}, ${term})`,
-          sub: `${party} • ${district} • Attendance: ${m.Regular_Attendance_Pct || "95%"}`,
+          sub: `${party} • ${district} • Attendance: ${m.Regular_Attendance_Pct || "Not enough votes yet"}`,
           url: `member.html?id=${id}`,
           badgeClass: party === "Democratic" ? "badge-dem" : party === "Republican" ? "badge-rep" : "badge-ind",
           badgeText: party
@@ -253,15 +291,15 @@ const VotalumeUI = (function() {
 
     // Search Bills
     bills.forEach((b) => {
-      const fullText = `${b.Bill_Number} ${b.Bill_Title} ${b.Assigned_Tags} ${b.Chamber}`.toLowerCase();
+      const fullText = `${b.Bill_Number || ""} ${b.Plain_English_Title || b.Bill_Title || ""} ${b.Tags || b.Assigned_Tags || ""} ${b.Chamber || ""}`.toLowerCase();
       if (fullText.includes(query)) {
         results.push({
           type: "Bill",
-          title: `${b.Bill_Number}: ${b.Bill_Title}`,
-          sub: `${b.Chamber} • Result: ${b.Result} • ${b.Vote_Date}`,
+          title: `${b.Bill_Number || "Bill"}: ${b.Plain_English_Title || b.Bill_Title || "Title unavailable"}`,
+          sub: `${b.Chamber || "Congress"} • ${b.Vote_Category || "Category unavailable"} • ${b.Outcome || b.Result || "Outcome unavailable"} • ${b.Vote_Date || "Date unavailable"}`,
           url: `bill.html?id=${b.Roll_Call_ID}`,
           badgeClass: "badge-gold",
-          badgeText: b.Margin_Type || "Roll Call"
+          badgeText: b.Vote_Category || "Roll Call"
         });
       }
     });
@@ -474,8 +512,48 @@ const VotalumeUI = (function() {
     const submitBtn = document.getElementById("discrepancy-submit-btn");
     const recordGroup = recordIdInput?.closest(".form-group");
     const nameGroup = nameInput?.closest(".form-group");
+    const emailGroup = emailInput?.closest(".form-group");
     const descriptionLabel = modal.querySelector('label[for="discrepancy-description"]');
     let submissionType = "discrepancy";
+
+    let reportFields = modal.querySelector("#report-entity-fields");
+    if (!reportFields && recordGroup) {
+      reportFields = document.createElement("div");
+      reportFields.id = "report-entity-fields";
+      reportFields.innerHTML = `
+        <div class="form-group" style="margin-bottom:0.75rem;">
+          <label class="form-label" for="report-entity-type">Entity Type</label>
+          <select id="report-entity-type" name="Entity_Type" class="form-select"><option>Bill</option><option>Roll Call</option><option>Lawmaker</option><option>Other</option></select>
+        </div>
+        <div class="form-group" style="margin-bottom:0.75rem;">
+          <label class="form-label" for="report-entity-name">Entity Name (Optional)</label>
+          <input id="report-entity-name" name="Entity_Name" class="form-input" />
+        </div>
+        <div class="form-group" style="margin-bottom:0.75rem;">
+          <label class="form-label" for="report-issue-category">Issue Category</label>
+          <select id="report-issue-category" name="Issue_Category" class="form-select"><option>Incorrect vote count</option><option>Missing record</option><option>Incorrect bill or lawmaker details</option><option>Other</option></select>
+        </div>
+        <div class="form-group" style="margin-bottom:0.75rem;">
+          <label class="form-label" for="report-official-source-url">Official Source URL</label>
+          <input id="report-official-source-url" name="Official_Source_URL" type="url" class="form-input" placeholder="https://" />
+        </div>
+      `;
+      recordGroup.insertAdjacentElement("beforebegin", reportFields);
+    }
+    const entityTypeInput = modal.querySelector("#report-entity-type");
+    const entityNameInput = modal.querySelector("#report-entity-name");
+    const issueCategoryInput = modal.querySelector("#report-issue-category");
+    const sourceUrlInput = modal.querySelector("#report-official-source-url");
+    const recordIdLabel = modal.querySelector('label[for="discrepancy-record-id"]');
+    if (recordIdInput) {
+      recordIdInput.name = "Entity_ID";
+      recordIdInput.placeholder = "e.g. H-119-1-5 or B001323";
+    }
+    if (recordIdLabel) recordIdLabel.textContent = "Entity ID";
+    if (descInput) descInput.name = "Description";
+    if (emailInput) emailInput.name = "Reporter_Email";
+    const emailLabel = modal.querySelector('label[for="discrepancy-user-email"]');
+    if (emailLabel) emailLabel.textContent = "Reporter Email (Optional)";
 
     let categoryGroup = modal.querySelector("#suggestion-category-group");
     if (!categoryGroup && recordGroup) {
@@ -501,10 +579,12 @@ const VotalumeUI = (function() {
       const title = modal.querySelector("#discrepancy-modal-title");
       if (title) title.textContent = isSuggestion ? "Send a Suggestion" : "Report a Data Discrepancy";
       if (categoryGroup) categoryGroup.style.display = isSuggestion ? "block" : "none";
+      if (reportFields) reportFields.style.display = isSuggestion ? "none" : "block";
       if (recordGroup) recordGroup.style.display = isSuggestion ? "none" : "block";
       if (recordIdInput) recordIdInput.required = !isSuggestion;
-      if (nameGroup) nameGroup.style.display = isSuggestion ? "none" : "block";
-      if (descriptionLabel) descriptionLabel.textContent = isSuggestion ? "Suggestion" : "Discrepancy Description & Official Source URL";
+      if (nameGroup) nameGroup.style.display = "none";
+      if (emailGroup) emailGroup.style.display = "block";
+      if (descriptionLabel) descriptionLabel.textContent = isSuggestion ? "Suggestion" : "Description";
       if (descInput) {
         descInput.placeholder = isSuggestion
           ? "What would you like Votalume to improve or add?"
@@ -577,10 +657,19 @@ const VotalumeUI = (function() {
         const reportData = {
           submission_type: submissionType,
           timestamp: new Date().toISOString(),
+          Page_Path: pagePath,
+          Page_URL: window.location.href,
+          Page_Title: document.title,
+          Entity_Type: submissionType === "suggestion" ? "Suggestion" : entityTypeInput?.value || "Other",
+          Entity_ID: submissionType === "suggestion" ? "" : recordId,
+          Entity_Name: submissionType === "suggestion" ? "" : entityNameInput?.value.trim() || "",
+          Issue_Category: submissionType === "suggestion" ? "Suggestion" : issueCategoryInput?.value || "Other",
+          Description: description,
+          Official_Source_URL: submissionType === "suggestion" ? "" : sourceUrlInput?.value.trim() || "",
+          Reporter_Email: userEmail,
           pagePath: pagePath,
           pageUrl: window.location.href,
           pageTitle: document.title,
-          userName: userName,
           userEmail: userEmail,
           recordId: submissionType === "suggestion" ? "" : recordId,
           description: description,
@@ -691,13 +780,65 @@ const VotalumeUI = (function() {
     }[m]));
   }
 
+  function renderBillCardDetails(bill, voteCounts, includeTags = true) {
+    const yes = Number(voteCounts?.yes) || 0;
+    const no = Number(voteCounts?.no) || 0;
+    const present = Number(voteCounts?.present) || 0;
+    const didntVote = Number(voteCounts?.didntVote) || 0;
+    const total = yes + no + present + didntVote || 1;
+    const tagsText = String(bill.Tags || bill.Assigned_Tags || "");
+    const tags = tagsText.match(/\[[^\]]+\]/g) || tagsText.split(/[;,]/).map((tag) => tag.trim()).filter(Boolean);
+    const tagMarkup = tags.map((tag) => {
+      const label = window.VotalumeData?.getFriendlyTagLabel?.(tag) || tag;
+      return `<span class="tag-pill">${escapeHtml(label)}</span>`;
+    }).join("");
+    const voteSummary = bill.Plain_Vote_Summary || "Vote summary not available.";
+    const voteMeaning = [
+      ["Yes", bill.Vote_Yes_Means],
+      ["No", bill.Vote_No_Means],
+      ["Didn't Vote", bill.Vote_Absent_Means]
+    ];
+    const impact = [
+      ["Who it affects", bill.Who_It_Affects],
+      ["What you gain", bill.What_You_Gain],
+      ["What you may lose or pay", bill.What_You_Lose_Or_Pay]
+    ];
+
+    return `
+      <div class="vote-count-panel" style="margin:1rem 0 0.75rem;background:#F8FAFC;border:1px solid var(--color-border);padding:0.85rem 1rem;border-radius:4px;">
+        <div style="display:flex;justify-content:space-between;gap:0.75rem;flex-wrap:wrap;font-size:0.9rem;font-weight:600;margin-bottom:0.5rem;">
+          <span style="color:#15803D">Yes: ${yes}</span><span style="color:#B91C1C">No: ${no}</span><span>Present: ${present}</span><span>Didn't Vote: ${didntVote}</span>
+        </div>
+        <div role="img" aria-label="Vote counts: ${yes} yes, ${no} no, ${present} present, ${didntVote} didn't vote" style="height:10px;background:#E2E8F0;overflow:hidden;display:flex;border-radius:2px;">
+          <span style="width:${yes / total * 100}%;background:#15803D"></span><span style="width:${no / total * 100}%;background:#B91C1C"></span><span style="width:${present / total * 100}%;background:#D97706"></span><span style="width:${didntVote / total * 100}%;background:#64748B"></span>
+        </div>
+        <p style="margin:0.65rem 0 0;color:var(--color-text-secondary);font-size:0.9rem;line-height:1.5;">${escapeHtml(voteSummary)}</p>
+      </div>
+      <section aria-label="What a vote means" style="margin:0.75rem 0;">
+        <h3 class="plain-label-main" style="margin:0 0 0.4rem;">What a Vote Means</h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:0.6rem;">
+        ${voteMeaning.map(([label, text]) => `<div style="padding:0.65rem;border-left:3px solid var(--color-border);background:#FAFAFA;"><strong>${label}</strong><div style="font-size:0.9rem;color:var(--color-text-secondary);margin-top:0.2rem;">${escapeHtml(text || "Not available")}</div></div>`).join("")}
+        </div>
+      </section>
+      <section aria-label="How it affects me" style="padding:0.8rem;border:1px solid var(--color-border);margin:0.75rem 0;background:#FFF;">
+        <h3 style="font-size:1rem;margin:0 0 0.4rem;">How It Affects Me</h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:0.55rem;">
+          ${impact.map(([label, text]) => `<div><strong style="font-size:0.85rem;">${label}</strong><div style="font-size:0.9rem;color:var(--color-text-secondary);">${escapeHtml(text || "Not available")}</div></div>`).join("")}
+        </div>
+      </section>
+      ${includeTags && tagMarkup ? `<div style="display:flex;gap:0.35rem;flex-wrap:wrap;margin:0.75rem 0 1rem;">${tagMarkup}</div>` : ""}
+    `;
+  }
+
   return {
     initCommon,
     openSearchModal,
     closeSearchModal,
     handlePortraitError,
     getSilhouetteSVG,
-    escapeHtml
+    escapeHtml,
+    renderBillCardDetails,
+    updateTagTaxonomyLabels
   };
 })();
 

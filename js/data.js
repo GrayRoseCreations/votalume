@@ -5,8 +5,10 @@
  */
 
 const VotalumeData = (function() {
-  const CACHE_PREFIX = "votalume_cache_";
-  const CACHE_META_KEY = "votalume_cache_metadata";
+  const CACHE_PREFIX = "votalume_cache_v2_";
+  const inFlightTabs = new Map();
+  const loadedTabs = new Set();
+  const loadedAt = new Map();
 
   // In-memory data store for the active session
   const store = {
@@ -27,6 +29,22 @@ const VotalumeData = (function() {
 
   let isUsingCachedFallback = false;
 
+  function hasMetricValue(value) {
+    return value !== undefined && value !== null && String(value).trim() !== "";
+  }
+
+  function metricText(row, keys) {
+    const key = keys.find((candidate) => hasMetricValue(row?.[candidate]));
+    return key ? String(row[key]).trim() : "Not enough votes yet";
+  }
+
+  function metricScore(row, keys) {
+    const value = metricText(row, keys);
+    if (value === "Not enough votes yet") return null;
+    const score = parseFloat(value);
+    return Number.isFinite(score) ? score : null;
+  }
+
   // --- Fetching & Ingestion ---
 
   async function fetchWithRetry(url, retries = 2, delay = 800) {
@@ -46,7 +64,7 @@ const VotalumeData = (function() {
 
   function getCachedTab(tabName) {
     try {
-      const cached = sessionStorage.getItem(CACHE_PREFIX + tabName) || localStorage.getItem(CACHE_PREFIX + tabName);
+      const cached = sessionStorage.getItem(CACHE_PREFIX + tabName);
       if (!cached) return null;
       const parsed = JSON.parse(cached);
       const now = Date.now();
@@ -54,7 +72,8 @@ const VotalumeData = (function() {
       if (now - parsed.timestamp < ttlMs) {
         return parsed.data;
       }
-      return parsed.data; // Return stale data if expired, but mark flag
+      sessionStorage.removeItem(CACHE_PREFIX + tabName);
+      return null;
     } catch (e) {
       return null;
     }
@@ -67,27 +86,30 @@ const VotalumeData = (function() {
         data: data
       });
       sessionStorage.setItem(CACHE_PREFIX + tabName, payload);
-      localStorage.setItem(CACHE_PREFIX + tabName, payload);
     } catch (e) {
       console.warn("Storage quota exceeded, could not cache", tabName);
     }
   }
 
-  async function loadTab(tabKey, forceRefresh = false, failOnFetchError = false) {
+  async function fetchTab(tabKey, forceRefresh = false, failOnFetchError = false) {
     const tabConf = window.VOTALUME_CONFIG.TABS[tabKey];
     if (!tabConf) throw new Error(`Unknown tabKey: ${tabKey}`);
     const tabName = tabConf.name;
 
     // Check memory first
-    if (!forceRefresh && store[tabName] && (!Array.isArray(store[tabName]) || store[tabName].length > 0)) {
+    const ttlMs = (window.VOTALUME_CONFIG?.CACHE_TTL_MINUTES || 15) * 60 * 1000;
+    if (!forceRefresh && loadedTabs.has(tabName) && Date.now() - (loadedAt.get(tabName) || 0) < ttlMs) {
       return store[tabName];
     }
+    if (!forceRefresh && loadedTabs.has(tabName)) loadedTabs.delete(tabName);
 
     // Check cache
     if (!forceRefresh) {
       const cached = getCachedTab(tabName);
-      if (cached && (Array.isArray(cached) ? cached.length > 0 : Object.keys(cached).length > 0)) {
+      if (cached !== null) {
         store[tabName] = cached;
+        loadedTabs.add(tabName);
+        loadedAt.set(tabName, Date.now());
         return cached;
       }
     }
@@ -109,18 +131,29 @@ const VotalumeData = (function() {
       if (tabKey === "SITE_METADATA") {
         const metaObj = {
           Active_Congress: "119th Congress (2nd Session)",
-          Last_Updated_Timestamp: new Date().toISOString(),
+          Last_Updated_Timestamp: "",
           Total_Bills_Analyzed: "0",
           Total_Roll_Calls: "0",
           Backfill_Completion_Pct: "0.00%"
         };
+        const canonicalMetadataKeys = {
+          active_congress: "Active_Congress",
+          last_updated_timestamp: "Last_Updated_Timestamp",
+          total_bills_analyzed: "Total_Bills_Analyzed",
+          total_roll_calls: "Total_Roll_Calls",
+          backfill_completion_pct: "Backfill_Completion_Pct"
+        };
         // Parse metadata rows
-        cleanData.forEach((row) => {
+        (Array.isArray(cleanData) ? cleanData : []).forEach((row) => {
           const keys = Object.keys(row);
-          if (keys.length >= 2) {
-            const k = String(row[keys[0]]).trim();
-            const v = String(row[keys[1]]).trim();
-            if (k) metaObj[k] = v;
+          const metricKey = keys.find((key) => /^(metric|key)$/i.test(key.trim())) || keys[0];
+          const valueKey = keys.find((key) => /^(value|val)$/i.test(key.trim())) || keys[1];
+          if (!metricKey || !valueKey) return;
+          const metric = String(row[metricKey] || "").trim();
+          const value = String(row[valueKey] || "").trim();
+          if (metric && !/^(metric|key)$/i.test(metric)) {
+            const normalizedMetric = metric.toLowerCase().replace(/[\s-]+/g, "_");
+            metaObj[canonicalMetadataKeys[normalizedMetric] || metric] = value;
           }
         });
         cleanData = metaObj;
@@ -129,13 +162,15 @@ const VotalumeData = (function() {
       // Check if sheet returned empty data or only header
       const isEmpty = !cleanData || (Array.isArray(cleanData) && cleanData.length === 0);
       if (isEmpty) {
-        cleanData = getSeedFallback(tabKey);
-        isUsingCachedFallback = true;
+        cleanData = tabKey === "ACCOUNTABILITY_EXTRAS" ? [] : getSeedFallback(tabKey);
+        isUsingCachedFallback = tabKey !== "ACCOUNTABILITY_EXTRAS";
       } else {
         isUsingCachedFallback = false;
       }
 
       store[tabName] = cleanData;
+      loadedTabs.add(tabName);
+      loadedAt.set(tabName, Date.now());
       setCachedTab(tabName, cleanData);
       dispatchStatusEvent();
       return cleanData;
@@ -147,14 +182,31 @@ const VotalumeData = (function() {
       const cached = getCachedTab(tabName);
       if (cached) {
         store[tabName] = cached;
+        loadedTabs.add(tabName);
+        loadedAt.set(tabName, Date.now());
         return cached;
       }
 
       // Seed fallback
       const seed = getSeedFallback(tabKey);
       store[tabName] = seed;
+      loadedTabs.add(tabName);
+      loadedAt.set(tabName, Date.now());
       if (failOnFetchError) throw err;
       return seed;
+    }
+  }
+
+  async function loadTab(tabKey, forceRefresh = false, failOnFetchError = false) {
+    const tabName = window.VOTALUME_CONFIG.TABS[tabKey]?.name;
+    if (!tabName) throw new Error(`Unknown tabKey: ${tabKey}`);
+    if (inFlightTabs.has(tabName)) return inFlightTabs.get(tabName);
+    const pending = fetchTab(tabKey, forceRefresh, failOnFetchError);
+    inFlightTabs.set(tabName, pending);
+    try {
+      return await pending;
+    } finally {
+      inFlightTabs.delete(tabName);
     }
   }
 
@@ -212,6 +264,7 @@ const VotalumeData = (function() {
     ];
 
     await Promise.allSettled(coreKeys.map((k) => loadTab(k)));
+    dispatchStatusEvent();
   }
 
   // --- Lazy Loading for Specific Pages ---
@@ -306,12 +359,12 @@ const VotalumeData = (function() {
   }
 
   async function refreshLiveData() {
-    const requiredKeys = ["BILLS_SUMMARY", "SITE_METADATA", "HOUSE_SUMMARY", "SENATE_SUMMARY", "BACKFILL_QUEUE", "TAG_DEFINITIONS"];
+    const standardRefreshKeys = ["BILLS_SUMMARY", "SITE_METADATA", "HOUSE_SUMMARY", "SENATE_SUMMARY", "BACKFILL_QUEUE", "PARTY_COMPARISON", "TAG_DEFINITIONS", "VOTING_TRENDS", "ACCOUNTABILITY_EXTRAS", "QUIZ_QUESTION_BANK"];
     const loadedKeys = Object.keys(window.VOTALUME_CONFIG.TABS).filter((key) => {
       const tabName = window.VOTALUME_CONFIG.TABS[key].name;
-      return store[tabName] && (!Array.isArray(store[tabName]) || store[tabName].length > 0);
+      return loadedTabs.has(tabName);
     });
-    const keysToRefresh = Array.from(new Set([...requiredKeys, ...loadedKeys]));
+    const keysToRefresh = Array.from(new Set([...standardRefreshKeys, ...loadedKeys]));
 
     Object.keys(window.VOTALUME_CONFIG.TABS).forEach((key) => {
       const tabName = window.VOTALUME_CONFIG.TABS[key].name;
@@ -325,6 +378,8 @@ const VotalumeData = (function() {
     keysToRefresh.forEach((key) => {
       const tabName = window.VOTALUME_CONFIG.TABS[key].name;
       store[tabName] = window.VOTALUME_CONFIG.TABS[key].lazy ? null : [];
+      loadedTabs.delete(tabName);
+      loadedAt.delete(tabName);
     });
 
     isUsingCachedFallback = false;
@@ -406,32 +461,32 @@ const VotalumeData = (function() {
       stateMajorIndustries: primary.State_Major_Industries || "",
 
       // Attendance Metrics (Active primary chamber)
-      regularAttendancePct: primary.Regular_Attendance_Pct || "95.0%",
-      lameDuckAttendancePct: primary.Lame_Duck_Attendance_Pct || "92.0%",
-      recentAttendance20Pct: primary.Recent_Attendance_20_Pct || "95.0%",
+      regularAttendancePct: metricText(primary, ["Regular_Attendance_Pct", "Regular_Attendance"]),
+      lameDuckAttendancePct: metricText(primary, ["Lame_Duck_Attendance_Pct", "Lame_Duck_Attendance"]),
+      recentAttendance20Pct: metricText(primary, ["Recent_Attendance_20_Pct", "Recent_Attendance_20"]),
       presentRatePct: primary.Present_Rate_Pct || "0.2%",
       longestConsecutiveMissedStreak: primary.Longest_Consecutive_Missed_Streak || "0 votes",
       decisiveLandmarkMissedCount: primary.Decisive_Landmark_Missed_Count || "0",
 
       // Partisan & Presidential Alignment
-      partyUnityPct: primary.Party_Unity_Pct || "95.0%",
-      crossoverVotePct: primary.Crossover_Vote_Pct || "5.0%",
-      presSupportInPartyPct: primary.Pres_Support_In_Party_Pct || "90.0%",
-      presSupportInPartyN: primary.Pres_Support_In_Party_N || "150",
-      presSupportOppositionPct: primary.Pres_Support_Opposition_Pct || "15.0%",
-      presSupportOppositionN: primary.Pres_Support_Opposition_N || "120",
+      partyUnityPct: metricText(primary, ["Party_Unity_Pct", "Party_Unity"]),
+      crossoverVotePct: metricText(primary, ["Crossover_Vote_Pct", "Crossover_Vote"]),
+      presSupportInPartyPct: metricText(primary, ["Pres_Support_In_Party_Pct", "Pres_Support_In_Party"]),
+      presSupportInPartyN: metricText(primary, ["Pres_Support_In_Party_N"]),
+      presSupportOppositionPct: metricText(primary, ["Pres_Support_Opposition_Pct", "Pres_Support_Opposition"]),
+      presSupportOppositionN: metricText(primary, ["Pres_Support_Opposition_N"]),
       voteReversalRatePct: primary.Vote_Reversal_Rate_Pct || "2.0%",
       quarterlySwingPts: primary.Quarterly_Swing_Pts || "1.0",
       alignmentDriftDelta: primary.Alignment_Drift_Delta || "0.0",
 
       // 6 Composite Indices
       indices: {
-        economic: { score: parseFloat(primary.Index_Economic_Fiscal_Pct) || 50, n: primary.Index_Economic_Sample_N || "40" },
-        social: { score: parseFloat(primary.Index_Social_Rights_Pct) || 50, n: primary.Index_Social_Sample_N || "40" },
-        governance: { score: parseFloat(primary.Index_Gov_Oversight_Pct) || 50, n: primary.Index_Gov_Sample_N || "35" },
-        security: { score: parseFloat(primary.Index_Security_Foreign_Pct) || 50, n: primary.Index_Security_Sample_N || "45" },
-        health: { score: parseFloat(primary.Index_Health_Entitlements_Pct) || 50, n: primary.Index_Health_Sample_N || "35" },
-        energy: { score: parseFloat(primary.Index_Energy_Tech_Ag_Pct) || 50, n: primary.Index_Energy_Sample_N || "35" }
+        economic: { score: metricScore(primary, ["Index_Economic_Fiscal_Pct", "Index_Economic_Fiscal"]), n: metricText(primary, ["Index_Economic_Sample_N"]) },
+        social: { score: metricScore(primary, ["Index_Social_Rights_Pct", "Index_Social_Rights"]), n: metricText(primary, ["Index_Social_Sample_N"]) },
+        governance: { score: metricScore(primary, ["Index_Gov_Oversight_Pct", "Index_Gov_Oversight"]), n: metricText(primary, ["Index_Gov_Sample_N"]) },
+        security: { score: metricScore(primary, ["Index_Security_Foreign_Pct", "Index_Security_Foreign"]), n: metricText(primary, ["Index_Security_Sample_N"]) },
+        health: { score: metricScore(primary, ["Index_Health_Entitlements_Pct", "Index_Health_Entitlements"]), n: metricText(primary, ["Index_Health_Sample_N"]) },
+        energy: { score: metricScore(primary, ["Index_Energy_Tech_Ag_Pct", "Index_Energy_Tech_Ag"]), n: metricText(primary, ["Index_Energy_Sample_N"]) }
       },
 
       // Underlying chamber records for chamber switcher tabs
@@ -475,6 +530,37 @@ const VotalumeData = (function() {
   async function getAllBills() {
     const bills = await loadTab("BILLS_SUMMARY");
     return Array.isArray(bills) && bills.length ? bills : (window.VOTALUME_SEED?.BILLS || []);
+  }
+
+  async function getVoteCountsForBill(rollCallId) {
+    const isSenate = /^S-/i.test(String(rollCallId || ""));
+    const tabKey = isSenate ? "SENATE_VOTES_LOG" : "HOUSE_VOTES_LOG";
+    const rows = await loadTab(tabKey);
+    const result = { yes: 0, no: 0, present: 0, didntVote: 0 };
+    if (!Array.isArray(rows) || !rows.length) return result;
+
+    const rollCallRow = rows.find((row) => String(row[0] || "").trim().toLowerCase() === "roll_call_id") || rows[0];
+    const voteColumn = rollCallRow.findIndex((value) => String(value || "").trim() === rollCallId);
+    if (voteColumn < 0) return result;
+
+    const memberHeader = rows.findIndex((row) => /^(member_id|memberid|bioguide_id|bioguideid)$/i.test(String(row[0] || "").trim()));
+    const firstMemberRow = memberHeader >= 0 ? memberHeader + 1 : 4;
+    rows.slice(firstMemberRow).forEach((row) => {
+      const memberId = String(row[0] || "").trim();
+      if (!/^[A-Z]\d{6}$/i.test(memberId)) return;
+      const vote = String(row[voteColumn] || "").trim().toLowerCase();
+      if (/^(yea|yes|y)$/.test(vote)) result.yes++;
+      else if (/^(nay|no|n)$/.test(vote)) result.no++;
+      else if (vote === "present") result.present++;
+      else if (/^(nv|not voting|absent|didn.t vote)$/.test(vote)) result.didntVote++;
+    });
+    return result;
+  }
+
+  function getFriendlyTagLabel(tag) {
+    const normalized = String(tag || "").trim();
+    const definition = (store.Tag_Definitions || []).find((row) => String(row.Tag || "").trim() === normalized);
+    return definition?.Voter_Friendly_Label || normalized;
   }
 
   async function getBillById(rollCallId) {
@@ -551,6 +637,8 @@ const VotalumeData = (function() {
     getUnifiedMemberProfile,
     getDelegation,
     getAllBills,
+    getVoteCountsForBill,
+    getFriendlyTagLabel,
     getBillById,
     getMemberVotesForBill,
     getStore: () => store,

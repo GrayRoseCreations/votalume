@@ -40,7 +40,7 @@ function doPost(e) {
     var sheetName = isSuggestion ? "Suggestions" : "Discrepancy_Reports";
     var headers = isSuggestion
       ? ["Timestamp", "Category", "Suggestion_Text", "Submitter_Email", "Page_Path", "Page_URL", "Page_Title", "Status"]
-      : ["Timestamp", "Page_Path", "Page_URL", "Page_Title", "User_Name", "User_Email", "Record_ID", "Description_And_Source", "Status"];
+      : ["Timestamp", "Page_Path", "Page_URL", "Page_Title", "Entity_Type", "Entity_ID", "Entity_Name", "Issue_Category", "Description", "Official_Source_URL", "Reporter_Email", "Status"];
     var sheet = ss.getSheetByName(sheetName);
 
     if (!sheet) {
@@ -58,18 +58,34 @@ function doPost(e) {
     }
 
     var headerRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    headers.forEach(function(header) {
+      var exists = headerRow.some(function(existing) {
+        return String(existing).trim().toLowerCase() === header.toLowerCase();
+      });
+      if (!exists) {
+        headerRow.push(header);
+        sheet.getRange(1, headerRow.length).setValue(header);
+      }
+    });
     var values = {
       timestamp: data.timestamp || new Date().toISOString(),
-      pagepath: data.pagePath || "",
-      pageurl: data.pageUrl || "",
-      pagetitle: data.pageTitle || "",
+      pagepath: data.Page_Path || data.pagePath || "",
+      pageurl: data.Page_URL || data.pageUrl || "",
+      pagetitle: data.Page_Title || data.pageTitle || "",
       username: data.userName || "Anonymous Citizen",
       useremail: data.userEmail || "",
-      recordid: data.recordId || "",
-      descriptionandsource: data.description || data.Suggestion_Text || "",
+      recordid: data.Entity_ID || data.recordId || "",
+      entitytype: data.Entity_Type || "",
+      entityid: data.Entity_ID || data.recordId || "",
+      entityname: data.Entity_Name || "",
+      issuecategory: data.Issue_Category || "",
+      description: data.Description || data.description || data.Suggestion_Text || "",
+      descriptionandsource: data.Description || data.description || data.Suggestion_Text || "",
+      officialsourceurl: data.Official_Source_URL || "",
+      reporteremail: data.Reporter_Email || data.userEmail || "",
       category: data.Category || data.category || "",
       suggestiontext: data.Suggestion_Text || data.suggestionText || data.description || "",
-      submitteremail: data.Submitter_Email || data.submitterEmail || data.userEmail || "",
+      submitteremail: data.Submitter_Email || data.submitterEmail || data.Reporter_Email || data.userEmail || "",
       status: data.status || "Pending Verification"
     };
     var row = headerRow.map(function(header) {
