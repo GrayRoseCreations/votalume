@@ -29,7 +29,7 @@ async function renderTaxonomy() {
   // Group tags by Category
   const categories = {};
   activeTags.forEach((row) => {
-    const cat = row.Category || "General Legislative Alignment";
+    const cat = row.Plain_English_Category || row.Category || "General Legislative Alignment";
     if (!categories[cat]) categories[cat] = [];
     categories[cat].push(row);
   });

@@ -37,7 +37,10 @@ async function loadAndRenderBill(rollCallId) {
   document.getElementById("bill-chamber-badge").textContent = `${bill.Chamber || "Congress"} Roll Call`;
   document.getElementById("bill-rollcall-id-badge").textContent = billRollCallId;
 
-  const isPassed = /passed|agreed/i.test(result);
+  const normalizedResult = String(result).trim().toLowerCase();
+  const isPassed = normalizedResult.startsWith("passed") ||
+    normalizedResult.startsWith("confirmed") ||
+    normalizedResult.startsWith("agreed");
   const resultBadge = document.getElementById("bill-result-badge");
   resultBadge.textContent = result;
   resultBadge.className = `badge ${isPassed ? 'badge-yea' : /failed|rejected/i.test(result) ? 'badge-nay' : 'badge-neutral'}`;
@@ -186,18 +189,25 @@ async function renderMemberVotes(bill) {
       const id = String(m.Member_ID).toUpperCase();
       const recordedVote = votesMap[id] || "Not recorded";
 
-      if (partyVal !== "ALL" && m.Party !== partyVal) return;
+      const memberParty = String(m.Party || "").trim();
+      const memberPartyLabel = ["i", "independent"].includes(memberParty.toLowerCase()) ? "Independent"
+        : ["d", "democratic"].includes(memberParty.toLowerCase()) ? "Democratic"
+          : ["r", "republican"].includes(memberParty.toLowerCase()) ? "Republican" : memberParty;
+      if (partyVal !== "ALL" && memberPartyLabel !== partyVal) return;
       if (voteVal !== "ALL" && recordedVote !== voteVal) return;
       if (searchVal) {
         const text = `${m.Member_Name} ${m.State} ${m.District} ${id}`.toLowerCase();
         if (!text.includes(searchVal)) return;
       }
 
-      const partyBadge = m.Party === "Democratic" ? "badge-dem" : m.Party === "Republican" ? "badge-rep" : "badge-ind";
-      const voteBadge = recordedVote === "Yea" ? "badge-yea" : recordedVote === "Nay" ? "badge-nay" : recordedVote === "Present" ? "badge-present" : "badge-neutral";
+      const partyBadge = memberPartyLabel === "Democratic" ? "badge-dem" : memberPartyLabel === "Republican" ? "badge-rep" : "badge-ind";
+      const voteDisplay = VotalumeUI.getVoteDisplay(recordedVote);
       
-      const hasResult = Boolean(bill.Result);
-      const alignsWithMajority = hasResult && ((recordedVote === "Yea" && bill.Result.includes("Passed")) || (recordedVote === "Nay" && !bill.Result.includes("Passed")));
+      const outcome = String(bill.Outcome || bill.Result || "").trim().toLowerCase();
+      const passedOutcome = outcome.startsWith("passed") || outcome.startsWith("confirmed");
+      const failedOutcome = outcome.startsWith("failed");
+      const hasResult = passedOutcome || failedOutcome;
+      const alignsWithMajority = hasResult && ((recordedVote === "Yea" && passedOutcome) || (recordedVote === "Nay" && failedOutcome));
       const majorityLabel = !hasResult || !["Yea", "Nay"].includes(recordedVote)
         ? "Not classified"
         : alignsWithMajority ? "Aligns with Majority" : "Minority Position";
@@ -209,9 +219,9 @@ async function renderMemberVotes(bill) {
             <div style="font-size:0.75rem; color:var(--color-text-muted);">${id}</div>
           </td>
           <td><span class="badge badge-neutral">${bill.Chamber}</span></td>
-          <td><span class="badge ${partyBadge}">${m.Party}</span></td>
+          <td><span class="badge ${partyBadge}">${VotalumeUI.escapeHtml(memberPartyLabel)}</span></td>
           <td>${m.State} ${m.District ? `(${m.District})` : ''}</td>
-          <td><span class="badge ${voteBadge}">${recordedVote}</span></td>
+          <td><span class="badge ${voteDisplay.badgeClass}">${VotalumeUI.escapeHtml(voteDisplay.label)}</span></td>
           <td>${majorityLabel}</td>
           <td><a href="member.html?id=${id}" class="btn btn-secondary btn-sm">Profile →</a></td>
         </tr>

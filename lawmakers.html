@@ -83,7 +83,7 @@
           <kbd>⌘K</kbd>
         </button>
 
-        <a href="guide.html#health" id="header-live-sync-badge" class="live-sync-indicator">
+        <a href="guide.html#changelog" id="header-live-sync-badge" class="live-sync-indicator">
           <span class="sync-pulse"></span> Live Sync
         </a>
 
@@ -107,7 +107,7 @@
 
       <!-- Filters & Control Strip -->
       <div class="card" style="margin-bottom: 2rem; padding: 1.5rem;">
-        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 1rem; align-items: end;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; align-items: end;">
           <div class="form-group">
             <label class="form-label">Search Lawmakers</label>
             <input type="text" id="filter-search-input" class="form-input" placeholder="Search by name, district, or ID..." />
@@ -137,6 +137,21 @@
               <option value="Republican">Republican</option>
               <option value="Independent">Independent</option>
             </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="filter-caucus-select">Caucus</label>
+            <select id="filter-caucus-select" class="form-select">
+              <option value="ALL">All Caucuses</option>
+              <option value="Democratic">Democratic Caucus</option>
+              <option value="Republican">Republican Caucus</option>
+              <option value="Independent">Independent</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="filter-tag-select">Issue tag</label>
+            <select id="filter-tag-select" class="form-select"><option value="ALL">All Topics</option></select>
           </div>
 
           <div class="form-group">
@@ -238,7 +253,7 @@
         <div class="footer-col">
           <h4>Methodology</h4>
           <ul>
-            <li><a href="guide.html">73-Tag Taxonomy Guide</a></li>
+            <li><a href="guide.html">Active-Tag Taxonomy Guide</a></li>
             <li><a href="guide.html#indices">6 Composite Indices Formula</a></li>
             <li><a href="guide.html#attendance">Lame-Duck Attendance Rules</a></li>
             <li><a href="guide.html#financial">Financial Disclosures Neutrality</a></li>

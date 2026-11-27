@@ -82,7 +82,7 @@
           <kbd>⌘K</kbd>
         </button>
 
-        <a href="guide.html#health" id="header-live-sync-badge" class="live-sync-indicator">
+        <a href="guide.html#changelog" id="header-live-sync-badge" class="live-sync-indicator">
           <span class="sync-pulse"></span> Live Sync
         </a>
 
@@ -169,16 +169,16 @@
               <h3 style="color: var(--party-rep); font-size: 1.15rem; margin-bottom: 0.75rem;">Republicans</h3>
               <div style="display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.9rem;">
                 <div style="display: flex; justify-content: space-between;">
-                  <span>Yea:</span> <strong id="gop-yea-val" style="color: #15803D;">0</strong>
+                  <span>Voted Yes:</span> <strong id="gop-yea-val" style="color: #15803D;">0</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between;">
-                  <span>Nay:</span> <strong id="gop-nay-val" style="color: #B91C1C;">0</strong>
+                  <span>Voted No:</span> <strong id="gop-nay-val" style="color: #B91C1C;">0</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between;">
-                  <span>Present:</span> <span id="gop-pres-val">0</span>
+                  <span>Present (Abstained):</span> <span id="gop-pres-val">0</span>
                 </div>
                 <div style="display: flex; justify-content: space-between;">
-                  <span>Not Voting:</span> <span id="gop-nv-val">0</span>
+                  <span>Absent (Didn't Vote):</span> <span id="gop-nv-val">0</span>
                 </div>
               </div>
             </div>
@@ -188,16 +188,16 @@
               <h3 style="color: var(--party-dem); font-size: 1.15rem; margin-bottom: 0.75rem;">Democrats</h3>
               <div style="display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.9rem;">
                 <div style="display: flex; justify-content: space-between;">
-                  <span>Yea:</span> <strong id="dem-yea-val" style="color: #15803D;">0</strong>
+                  <span>Voted Yes:</span> <strong id="dem-yea-val" style="color: #15803D;">0</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between;">
-                  <span>Nay:</span> <strong id="dem-nay-val" style="color: #B91C1C;">0</strong>
+                  <span>Voted No:</span> <strong id="dem-nay-val" style="color: #B91C1C;">0</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between;">
-                  <span>Present:</span> <span id="dem-pres-val">0</span>
+                  <span>Present (Abstained):</span> <span id="dem-pres-val">0</span>
                 </div>
                 <div style="display: flex; justify-content: space-between;">
-                  <span>Not Voting:</span> <span id="dem-nv-val">0</span>
+                  <span>Absent (Didn't Vote):</span> <span id="dem-nv-val">0</span>
                 </div>
               </div>
             </div>
@@ -207,16 +207,16 @@
               <h3 style="color: var(--color-civic-navy); font-size: 1.15rem; margin-bottom: 0.75rem;">Total Roll Call</h3>
               <div style="display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.9rem;">
                 <div style="display: flex; justify-content: space-between;">
-                  <span>Total Yea:</span> <strong id="total-yea-val" style="color: #15803D;">0</strong>
+                  <span>Total Voted Yes:</span> <strong id="total-yea-val" style="color: #15803D;">0</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between;">
-                  <span>Total Nay:</span> <strong id="total-nay-val" style="color: #B91C1C;">0</strong>
+                  <span>Total Voted No:</span> <strong id="total-nay-val" style="color: #B91C1C;">0</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between;">
-                  <span>Total Present:</span> <span id="total-pres-val">0</span>
+                  <span>Total Present (Abstained):</span> <span id="total-pres-val">0</span>
                 </div>
                 <div style="display: flex; justify-content: space-between;">
-                  <span>Total Not Voting:</span> <span id="total-nv-val">0</span>
+                  <span>Total Absent (Didn't Vote):</span> <span id="total-nv-val">0</span>
                 </div>
               </div>
             </div>
@@ -258,10 +258,10 @@
 
               <select id="vote-filter-select" class="form-select" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">
                 <option value="ALL">All Votes</option>
-                <option value="Yea">Yea</option>
-                <option value="Nay">Nay</option>
-                <option value="Present">Present</option>
-                <option value="Not Voting">Not Voting</option>
+                <option value="Yea">Voted Yes</option>
+                <option value="Nay">Voted No</option>
+                <option value="Present">Present (Abstained)</option>
+                <option value="Absent (Didn't Vote)">Absent (Didn't Vote)</option>
               </select>
             </div>
           </div>
@@ -325,7 +325,7 @@
         <div class="footer-col">
           <h4>Methodology</h4>
           <ul>
-            <li><a href="guide.html">73-Tag Taxonomy Guide</a></li>
+            <li><a href="guide.html">Active-Tag Taxonomy Guide</a></li>
             <li><a href="guide.html#indices">6 Composite Indices Formula</a></li>
             <li><a href="guide.html#attendance">Lame-Duck Attendance Rules</a></li>
             <li><a href="guide.html#financial">Financial Disclosures Neutrality</a></li>

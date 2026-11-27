@@ -26,6 +26,7 @@ const VOTALUME_CONFIG = {
     ACCOUNTABILITY_EXTRAS: { name: "Accountability_Extras", headers: 1 },
     TAG_DEFINITIONS: { name: "Tag_Definitions", headers: 1 },
     QUIZ_QUESTION_BANK: { name: "Quiz_Question_Bank", headers: 1 },
+    QUIZ_BENCHMARKS: { name: "Quiz_Benchmarks", headers: 1 },
     BACKFILL_QUEUE: { name: "Backfill_Queue", headers: 1 },
     DISCREPANCY_REPORTS: { name: "Discrepancy_Reports", headers: 1 },
     SITE_METADATA: { name: "Site_Metadata", headers: 1 },

@@ -82,7 +82,7 @@
           <kbd>⌘K</kbd>
         </button>
 
-        <a href="guide.html#health" id="header-live-sync-badge" class="live-sync-indicator">
+        <a href="guide.html#changelog" id="header-live-sync-badge" class="live-sync-indicator">
           <span class="sync-pulse"></span> Live Sync
         </a>
 
@@ -121,9 +121,9 @@
         </div>
 
         <div style="display: flex; gap: 0.5rem; align-items: center;">
-          <label class="form-label" style="margin: 0;">Chamber Scope:</label>
+          <label class="form-label" style="margin: 0;" for="party-chamber-scope">Chamber Scope:</label>
           <select id="party-chamber-scope" class="form-select">
-            <option value="Combined">Combined (House & Senate)</option>
+            <option value="Both">Both Chambers</option>
             <option value="House">House of Representatives</option>
             <option value="Senate">Senate</option>
           </select>
@@ -155,8 +155,8 @@
               <div style="font-weight: 700; color: var(--color-civic-navy); margin-bottom: 0.5rem;">4-Way Floor Participation</div>
               <div style="display: flex; justify-content: space-between;">
                 <span>Voted: <strong id="dem-voted-val">97.4%</strong></span>
-                <span>Present: <strong id="dem-present-val">0.2%</strong></span>
-                <span>Not Voting: <strong id="dem-nv-val">2.4%</strong></span>
+                <span>Present (Abstained): <strong id="dem-present-val">0.2%</strong></span>
+                <span>Absent (Didn't Vote): <strong id="dem-nv-val">2.4%</strong></span>
               </div>
             </div>
 
@@ -196,8 +196,8 @@
               <div style="font-weight: 700; color: var(--color-civic-navy); margin-bottom: 0.5rem;">4-Way Floor Participation</div>
               <div style="display: flex; justify-content: space-between;">
                 <span>Voted: <strong id="rep-voted-val">96.8%</strong></span>
-                <span>Present: <strong id="rep-present-val">0.3%</strong></span>
-                <span>Not Voting: <strong id="rep-nv-val">2.9%</strong></span>
+                <span>Present (Abstained): <strong id="rep-present-val">0.3%</strong></span>
+                <span>Absent (Didn't Vote): <strong id="rep-nv-val">2.9%</strong></span>
               </div>
             </div>
 
@@ -268,10 +268,10 @@
           <!-- Democratic Leaders -->
           <div class="card" style="padding: 1.5rem;">
             <h3 style="font-size: 1.15rem; color: var(--party-dem); margin-bottom: 1rem;">
-              Democratic Caucus: Most Independent & Most Loyal
+              Democratic Caucus: Crossover & Party Loyalty
             </h3>
             
-            <h4 style="font-size: 0.95rem; color: var(--color-crossover); margin-bottom: 0.5rem;">Top Crossover Independents</h4>
+            <h4 style="font-size: 0.95rem; color: var(--color-crossover); margin-bottom: 0.5rem;">Top Crossover Lawmakers</h4>
             <div id="dem-top-independent-list" style="margin-bottom: 1.25rem; font-size: 0.85rem;"></div>
 
             <h4 style="font-size: 0.95rem; color: var(--party-dem); margin-bottom: 0.5rem;">Top Party Loyalists</h4>
@@ -281,14 +281,37 @@
           <!-- Republican Leaders -->
           <div class="card" style="padding: 1.5rem;">
             <h3 style="font-size: 1.15rem; color: var(--party-rep); margin-bottom: 1rem;">
-              Republican Caucus: Most Independent & Most Loyal
+              Republican Caucus: Crossover & Party Loyalty
             </h3>
             
-            <h4 style="font-size: 0.95rem; color: var(--color-crossover); margin-bottom: 0.5rem;">Top Crossover Independents</h4>
+            <h4 style="font-size: 0.95rem; color: var(--color-crossover); margin-bottom: 0.5rem;">Top Crossover Lawmakers</h4>
             <div id="rep-top-independent-list" style="margin-bottom: 1.25rem; font-size: 0.85rem;"></div>
 
             <h4 style="font-size: 0.95rem; color: var(--party-rep); margin-bottom: 0.5rem;">Top Party Loyalists</h4>
             <div id="rep-top-loyal-list" style="font-size: 0.85rem;"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="crossover-tags-section" class="card" style="margin-bottom: 3rem; padding: 1.75rem;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem;">
+          <div>
+            <h2 style="font-size:1.35rem;margin:0 0 0.35rem;">When Lawmakers Cross Over: Top Issues &amp; Tags Supported</h2>
+            <p style="color:var(--color-text-secondary);font-size:0.9rem;margin:0;">Tags on roll calls where members voted against their caucus majority. Counts include each crossover vote.</p>
+          </div>
+          <div class="form-group" style="min-width:240px;margin:0;">
+            <label class="form-label" for="party-tag-filter">Focus on a tag</label>
+            <select id="party-tag-filter" class="form-select"><option value="ALL">All Active Tags</option></select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.5rem;">
+          <div class="card" style="border-top:4px solid var(--party-dem);padding:1.25rem;">
+            <h3 style="font-size:1.1rem;color:var(--party-dem);margin:0 0 0.85rem;">Democratic Crossovers (Voted Against Dem Majority)</h3>
+            <div id="dem-crossover-tags"></div>
+          </div>
+          <div class="card" style="border-top:4px solid var(--party-rep);padding:1.25rem;">
+            <h3 style="font-size:1.1rem;color:var(--party-rep);margin:0 0 0.85rem;">Republican Crossovers (Voted Against GOP Majority)</h3>
+            <div id="rep-crossover-tags"></div>
           </div>
         </div>
       </section>
@@ -330,7 +353,7 @@
         <div class="footer-col">
           <h4>Methodology</h4>
           <ul>
-            <li><a href="guide.html">73-Tag Taxonomy Guide</a></li>
+            <li><a href="guide.html">Active-Tag Taxonomy Guide</a></li>
             <li><a href="guide.html#indices">6 Composite Indices Formula</a></li>
             <li><a href="guide.html#attendance">Lame-Duck Attendance Rules</a></li>
             <li><a href="guide.html#financial">Financial Disclosures Neutrality</a></li>

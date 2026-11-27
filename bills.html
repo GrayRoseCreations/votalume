@@ -82,7 +82,7 @@
           <kbd>⌘K</kbd>
         </button>
 
-        <a href="guide.html#health" id="header-live-sync-badge" class="live-sync-indicator">
+        <a href="guide.html#changelog" id="header-live-sync-badge" class="live-sync-indicator">
           <span class="sync-pulse"></span> Live Sync
         </a>
 
@@ -137,9 +137,23 @@
             <select id="bill-category-select" class="form-select">
               <option value="ALL">All Categories</option>
               <option value="Policy">Policy</option>
-              <option value="Consensus_Minor">Consensus Minor</option>
+              <option value="Consensus_Minor">Bipartisan / Unanimous</option>
               <option value="Procedural">Procedural</option>
               <option value="Nomination">Nomination</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="bill-topic-select">Plain-English Topic</label>
+            <select id="bill-topic-select" class="form-select"><option value="ALL">All Topics</option></select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="bill-outcome-select">Outcome</label>
+            <select id="bill-outcome-select" class="form-select">
+              <option value="ALL">All Outcomes</option>
+              <option value="PASSED">Passed / Confirmed</option>
+              <option value="FAILED">Failed</option>
             </select>
           </div>
 
@@ -208,7 +222,7 @@
         <div class="footer-col">
           <h4>Methodology</h4>
           <ul>
-            <li><a href="guide.html">73-Tag Taxonomy Guide</a></li>
+            <li><a href="guide.html">Active-Tag Taxonomy Guide</a></li>
             <li><a href="guide.html#indices">6 Composite Indices Formula</a></li>
             <li><a href="guide.html#attendance">Lame-Duck Attendance Rules</a></li>
             <li><a href="guide.html#financial">Financial Disclosures Neutrality</a></li>

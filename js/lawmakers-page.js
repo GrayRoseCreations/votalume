@@ -7,10 +7,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   VotalumeUI.initCommon();
   VotalumeAuth.init();
 
-  await VotalumeData.loadTab("HOUSE_SUMMARY");
-  await VotalumeData.loadTab("SENATE_SUMMARY");
+  await VotalumeData.initCoreData();
 
   initStateFilter();
+  VotalumeUI.populateActiveTagFilter(document.getElementById("filter-tag-select"), "All Topics");
   setupFilterListeners();
   window.addEventListener("votalume:data-refreshed", renderLawmakers);
   renderLawmakers();
@@ -19,7 +19,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 let allLawmakers = [];
 
 function displayMetric(value) {
-  return value !== undefined && value !== null && String(value).trim() !== "" ? String(value).trim() : "Not enough votes yet";
+  return value !== undefined && value !== null && String(value).trim() !== "" ? String(value).trim() : "Pending Backfill";
 }
 
 function numericMetric(value) {
@@ -43,11 +43,13 @@ function setupFilterListeners() {
   const chamberSelect = document.getElementById("filter-chamber-select");
   const stateSelect = document.getElementById("filter-state-select");
   const partySelect = document.getElementById("filter-party-select");
+  const caucusSelect = document.getElementById("filter-caucus-select");
+  const tagSelect = document.getElementById("filter-tag-select");
   const statusSelect = document.getElementById("filter-status-select");
   const sortSelect = document.getElementById("sort-select");
   const resetBtn = document.getElementById("btn-reset-filters");
 
-  [searchInput, chamberSelect, stateSelect, partySelect, statusSelect, sortSelect].forEach((el) => {
+  [searchInput, chamberSelect, stateSelect, partySelect, caucusSelect, tagSelect, statusSelect, sortSelect].forEach((el) => {
     el?.addEventListener("input", renderLawmakers);
     el?.addEventListener("change", renderLawmakers);
   });
@@ -57,6 +59,8 @@ function setupFilterListeners() {
     if (chamberSelect) chamberSelect.value = "ALL";
     if (stateSelect) stateSelect.value = "ALL";
     if (partySelect) partySelect.value = "ALL";
+    if (caucusSelect) caucusSelect.value = "ALL";
+    if (tagSelect) tagSelect.value = "ALL";
     if (statusSelect) statusSelect.value = "ALL";
     if (sortSelect) sortSelect.value = "name";
     renderLawmakers();
@@ -72,19 +76,24 @@ async function prepareLawmakersList() {
 
   // First process Senate
   senate.forEach((m) => {
-    const id = String(m.Member_ID).trim().toUpperCase();
+    const id = String(m.Member_ID || "").trim().toUpperCase();
+    if (!id) return;
     map.set(id, {
       id,
       name: m.Member_Name,
       party: m.Party,
+      caucus: caucusLabel(m, "Senate"),
+      tags: `${m.Tags || ""}; ${m.Yes_Tags || ""}; ${m.No_Tags || ""}`,
       state: m.State,
       district: m.District || "Statewide",
       districtLean: m.District_Lean || "Unrated",
       termWindow: m.Term_Window,
       departureReason: m.Departure_Reason || "Active",
       chamber: "Senate",
-      isChamberSwitcher: false,
-      careerTitle: `U.S. Senator (${m.State})`,
+      isChamberSwitcher: VotalumeData.hasChamberSwitchBadge(m.Chamber_Switch_Badge),
+      careerTitle: VotalumeData.hasChamberSwitchBadge(m.Chamber_Switch_Badge)
+        ? `U.S. Senator ${m.Term_Window || ""} | U.S. Representative (prior service)`
+        : `U.S. Senator (${m.State})`,
       photoUrl: m.Photo_URL || `https://bioguide.congress.gov/bioguide/photo/${id[0]}/${id}.jpg`,
       regularAttendance: numericMetric(m.Regular_Attendance_Pct),
       regularAttendancePct: displayMetric(m.Regular_Attendance_Pct),
@@ -99,26 +108,32 @@ async function prepareLawmakersList() {
 
   // Then process House
   house.forEach((m) => {
-    const id = String(m.Member_ID).trim().toUpperCase();
+    const id = String(m.Member_ID || "").trim().toUpperCase();
+    if (!id) return;
     if (map.has(id)) {
       // Chamber switcher!
       const existing = map.get(id);
       existing.isChamberSwitcher = true;
       existing.careerTitle = `U.S. Senator ${existing.termWindow} | U.S. Rep ${m.Term_Window}`;
       existing.departureReason = "Chamber Switch";
+      existing.tags += `; ${m.Tags || ""}; ${m.Yes_Tags || ""}; ${m.No_Tags || ""}`;
     } else {
       map.set(id, {
         id,
         name: m.Member_Name,
         party: m.Party,
+        caucus: caucusLabel(m, "House"),
+        tags: `${m.Tags || ""}; ${m.Yes_Tags || ""}; ${m.No_Tags || ""}`,
         state: m.State,
         district: `${m.State}-${m.District}`,
         districtLean: m.District_Lean || "Unrated",
         termWindow: m.Term_Window,
         departureReason: m.Departure_Reason || "Active",
         chamber: "House",
-        isChamberSwitcher: m.Departure_Reason === "Chamber Switch",
-        careerTitle: `U.S. Representative (${m.State}-${m.District})`,
+        isChamberSwitcher: m.Departure_Reason === "Chamber Switch" || VotalumeData.hasChamberSwitchBadge(m.Chamber_Switch_Badge),
+        careerTitle: VotalumeData.hasChamberSwitchBadge(m.Chamber_Switch_Badge)
+          ? `U.S. Representative ${m.Term_Window || ""} | U.S. Senator (prior service)`
+          : `U.S. Representative (${m.State}-${m.District})`,
         photoUrl: m.Photo_URL || `https://bioguide.congress.gov/bioguide/photo/${id[0]}/${id}.jpg`,
         regularAttendance: numericMetric(m.Regular_Attendance_Pct),
         regularAttendancePct: displayMetric(m.Regular_Attendance_Pct),
@@ -135,6 +150,23 @@ async function prepareLawmakersList() {
   return Array.from(map.values());
 }
 
+function partyLabel(value) {
+  const party = String(value || "").trim().toLowerCase();
+  if (party === "i" || party.includes("ind")) return "Independent";
+  if (party === "d" || party.includes("dem")) return "Democratic";
+  if (party === "r" || party.includes("rep")) return "Republican";
+  return String(value || "Independent");
+}
+
+function caucusLabel(member, chamber) {
+  const caucus = String(member.Caucus || "").trim().toLowerCase();
+  if (caucus === "d" || caucus.includes("dem")) return "Democratic";
+  if (caucus === "r" || caucus.includes("rep")) return "Republican";
+  if (caucus === "i" || caucus.includes("ind")) return "Independent";
+  if (partyLabel(member.Party) === "Independent") return chamber === "Senate" ? "Democratic" : "Independent";
+  return partyLabel(member.Party);
+}
+
 async function renderLawmakers() {
   allLawmakers = await prepareLawmakersList();
 
@@ -142,6 +174,8 @@ async function renderLawmakers() {
   const chamberVal = document.getElementById("filter-chamber-select")?.value || "ALL";
   const stateVal = document.getElementById("filter-state-select")?.value || "ALL";
   const partyVal = document.getElementById("filter-party-select")?.value || "ALL";
+  const caucusVal = document.getElementById("filter-caucus-select")?.value || "ALL";
+  const tagVal = document.getElementById("filter-tag-select")?.value || "ALL";
   const statusVal = document.getElementById("filter-status-select")?.value || "ALL";
   const sortVal = document.getElementById("sort-select")?.value || "name";
 
@@ -168,7 +202,9 @@ async function renderLawmakers() {
     if (stateVal !== "ALL" && m.state !== stateVal) return false;
 
     // Party
-    if (partyVal !== "ALL" && m.party !== partyVal) return false;
+    if (partyVal !== "ALL" && partyLabel(m.party) !== partyVal) return false;
+    if (caucusVal !== "ALL" && m.caucus !== caucusVal) return false;
+    if (tagVal !== "ALL" && !m.tags.includes(tagVal)) return false;
 
     // Status & Lame duck badges
     if (statusVal === "LAME_DROP") {
@@ -187,9 +223,9 @@ async function renderLawmakers() {
 
   // Sort
   filtered.sort((a, b) => {
-    if (sortVal === "attendance") return b.regularAttendance - a.regularAttendance;
-    if (sortVal === "unity") return b.partyUnity - a.partyUnity;
-    if (sortVal === "crossover") return b.crossoverVote - a.crossoverVote;
+    if (sortVal === "attendance") return (b.regularAttendance ?? -Infinity) - (a.regularAttendance ?? -Infinity);
+    if (sortVal === "unity") return (b.partyUnity ?? -Infinity) - (a.partyUnity ?? -Infinity);
+    if (sortVal === "crossover") return (b.crossoverVote ?? -Infinity) - (a.crossoverVote ?? -Infinity);
     return a.name.localeCompare(b.name);
   });
 
@@ -209,7 +245,8 @@ async function renderLawmakers() {
   if (emptyState) emptyState.style.display = "none";
 
   tbody.innerHTML = filtered.map((m) => {
-    const partyBadge = m.party === "Democratic" ? "badge-dem" : m.party === "Republican" ? "badge-rep" : "badge-ind";
+    const displayParty = partyLabel(m.party);
+    const partyBadge = displayParty === "Democratic" ? "badge-dem" : displayParty === "Republican" ? "badge-rep" : "badge-ind";
     const drop = m.regularAttendance !== null && m.lameDuckAttendance !== null
       ? m.regularAttendance - m.lameDuckAttendance
       : null;
@@ -240,8 +277,8 @@ async function renderLawmakers() {
           </div>
         </td>
         <td>
-          <span class="badge ${partyBadge}">${m.party}</span>
-          <div style="font-size:0.8rem; color:var(--color-text-secondary); margin-top:0.25rem;">${m.district}</div>
+          <span class="badge ${partyBadge}">${displayParty}</span>
+          <div style="font-size:0.8rem; color:var(--color-text-secondary); margin-top:0.25rem;">${m.district} • ${m.caucus} Caucus</div>
         </td>
         <td>
           <span style="font-size:0.825rem; font-weight:500;">${m.districtLean}</span>

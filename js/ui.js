@@ -20,7 +20,7 @@ const VotalumeUI = (function() {
   function setupPlainEnglishNavigation() {
     const guideLink = document.querySelector('.primary-nav a[href="guide.html"]');
     if (guideLink) {
-      guideLink.innerHTML = '<span class="plain-label-stack"><span class="plain-label-main">Topic & Issue Guide</span><small class="plain-label-subtitle">73-Tag Legislative Taxonomy</small></span>';
+      guideLink.innerHTML = '<span class="plain-label-stack"><span class="plain-label-main">Topic & Issue Guide</span><small class="plain-label-subtitle">Active-Tag Legislative Taxonomy</small></span>';
     }
     const footer = document.querySelector(".site-footer");
     footer?.querySelectorAll('a[href="guide.html"], a[href="guide.html#indices"], a[href="guide.html#attendance"], a[href="guide.html#chamber-switchers"]').forEach((link) => {
@@ -31,7 +31,7 @@ const VotalumeUI = (function() {
           ? ["Attendance After Elections", "Post-Election Lame-Duck Rules"]
           : href.endsWith("#chamber-switchers")
             ? ["Served in House & Senate", "Cross-Chamber Career Record"]
-            : ["Topic & Issue Guide", "73-Tag Legislative Taxonomy"];
+            : ["Topic & Issue Guide", "Active-Tag Legislative Taxonomy"];
       link.innerHTML = `<span class="plain-label-stack"><span class="plain-label-main">${content[0]}</span><small class="plain-label-subtitle">${content[1]}</small></span>`;
     });
   }
@@ -153,14 +153,44 @@ const VotalumeUI = (function() {
   }
 
   function updateTagTaxonomyLabels() {
-    const definitions = window.VotalumeData?.getStore().Tag_Definitions || [];
+    const definitions = window.VotalumeData?.getActiveTagDefinitions?.() || [];
     if (!definitions.length) return;
-    const activeCount = definitions.filter((row) => /active/i.test(`${row.House_Status || ""} ${row.Senate_Status || ""}`)).length;
+    const activeCount = definitions.length;
     document.querySelectorAll(".plain-label-subtitle").forEach((label) => {
-      if (/^\d+-Tag Legislative Taxonomy$/.test(label.textContent.trim())) {
+      if (/^(?:\d+|Active)-Tag Legislative Taxonomy$/.test(label.textContent.trim())) {
         label.textContent = `${activeCount}-Tag Legislative Taxonomy`;
       }
     });
+    const countBadge = document.getElementById("tags-count-badge");
+    if (countBadge) countBadge.textContent = `${activeCount} Active Tags`;
+  }
+
+  function populateActiveTagFilter(select, allLabel) {
+    if (!select) return;
+    const definitions = window.VotalumeData?.getActiveTagDefinitions?.() || [];
+    const selected = select.value;
+    const groups = new Map();
+    definitions.forEach((row) => {
+      const tag = String(row.Tag || "").trim();
+      if (!tag) return;
+      const category = String(row.Plain_English_Category || row.Category || "Other Topics").trim();
+      if (!groups.has(category)) groups.set(category, []);
+      groups.get(category).push(row);
+    });
+    select.replaceChildren(new Option(allLabel || "All Topics", "ALL"));
+    [...groups.entries()].sort(([a], [b]) => a.localeCompare(b)).forEach(([category, rows]) => {
+      const group = document.createElement("optgroup");
+      group.label = category;
+      rows.sort((a, b) => String(a.Voter_Friendly_Label || a.Tag).localeCompare(String(b.Voter_Friendly_Label || b.Tag)));
+      rows.forEach((row) => {
+        const option = document.createElement("option");
+        option.value = String(row.Tag).trim();
+        option.textContent = String(row.Voter_Friendly_Label || row.Tag).trim();
+        group.appendChild(option);
+      });
+      select.appendChild(group);
+    });
+    if ([...select.options].some((option) => option.value === selected)) select.value = selected;
   }
 
   // --- Global Search ---
@@ -531,7 +561,7 @@ const VotalumeUI = (function() {
         </div>
         <div class="form-group" style="margin-bottom:0.75rem;">
           <label class="form-label" for="report-issue-category">Issue Category</label>
-          <select id="report-issue-category" name="Issue_Category" class="form-select"><option>Incorrect vote count</option><option>Missing record</option><option>Incorrect bill or lawmaker details</option><option>Other</option></select>
+          <select id="report-issue-category" name="Issue_Category" class="form-select"><option>Incorrect vote count</option><option>Missing record</option><option>Incorrect bill or lawmaker details</option><option>Privacy / quiz data deletion</option><option>Other</option></select>
         </div>
         <div class="form-group" style="margin-bottom:0.75rem;">
           <label class="form-label" for="report-official-source-url">Official Source URL</label>
@@ -567,6 +597,7 @@ const VotalumeUI = (function() {
           <option value="Feature">Feature</option>
           <option value="Data">Data</option>
           <option value="Accessibility">Accessibility</option>
+          <option value="Privacy / quiz data deletion">Privacy / quiz data deletion</option>
           <option value="Other">Other</option>
         </select>
       `;
@@ -780,6 +811,21 @@ const VotalumeUI = (function() {
     }[m]));
   }
 
+  function getVoteDisplay(vote) {
+    const value = String(vote || "").trim();
+    const normalized = value.toLowerCase();
+    if (["yea", "yes", "y"].includes(normalized)) return { label: "Voted Yes", badgeClass: "badge-yea" };
+    if (["nay", "no", "n"].includes(normalized)) return { label: "Voted No", badgeClass: "badge-nay" };
+    if (normalized === "present") return { label: "Present (Abstained)", badgeClass: "badge-present" };
+    if (["not voting", "absent", "nv", "didn't vote", "did not vote", "absent (didn't vote)"].includes(normalized)) {
+      return { label: "Absent (Didn't Vote)", badgeClass: "badge-neutral" };
+    }
+    if (["not in office", "not in office (excluded from attendance)"].includes(normalized)) {
+      return { label: "Not In Office (Excluded from Attendance)", badgeClass: "badge-neutral" };
+    }
+    return { label: value || "Not recorded", badgeClass: "badge-neutral" };
+  }
+
   function renderBillCardDetails(bill, voteCounts, includeTags = true) {
     const yes = Number(voteCounts?.yes) || 0;
     const no = Number(voteCounts?.no) || 0;
@@ -796,7 +842,8 @@ const VotalumeUI = (function() {
     const voteMeaning = [
       ["Yes", bill.Vote_Yes_Means],
       ["No", bill.Vote_No_Means],
-      ["Didn't Vote", bill.Vote_Absent_Means]
+      ...(present > 0 ? [["Present (Abstained)", bill.Vote_Present_Means || "Showed up on the floor, officially abstained from voting Yes or No."]] : []),
+      ["Absent (Didn't Vote)", bill.Vote_Absent_Means]
     ];
     const impact = [
       ["Who it affects", bill.Who_It_Affects],
@@ -807,10 +854,10 @@ const VotalumeUI = (function() {
     return `
       <div class="vote-count-panel" style="margin:1rem 0 0.75rem;background:#F8FAFC;border:1px solid var(--color-border);padding:0.85rem 1rem;border-radius:4px;">
         <div style="display:flex;justify-content:space-between;gap:0.75rem;flex-wrap:wrap;font-size:0.9rem;font-weight:600;margin-bottom:0.5rem;">
-          <span style="color:#15803D">Yes: ${yes}</span><span style="color:#B91C1C">No: ${no}</span><span>Present: ${present}</span><span>Didn't Vote: ${didntVote}</span>
+          <strong style="color:#15803D">Yes: ${yes}</strong><strong style="color:#B91C1C">No: ${no}</strong>${present > 0 ? `<span class="vote-count-present" tabindex="0" title="Showed up on the floor, officially abstained from voting Yes or No." aria-label="Present (Abstained): ${present}. Showed up on the floor, officially abstained from voting Yes or No.">Present (Abstained): ${present}</span>` : ""}<span>Absent (Didn't Vote): ${didntVote}</span>
         </div>
-        <div role="img" aria-label="Vote counts: ${yes} yes, ${no} no, ${present} present, ${didntVote} didn't vote" style="height:10px;background:#E2E8F0;overflow:hidden;display:flex;border-radius:2px;">
-          <span style="width:${yes / total * 100}%;background:#15803D"></span><span style="width:${no / total * 100}%;background:#B91C1C"></span><span style="width:${present / total * 100}%;background:#D97706"></span><span style="width:${didntVote / total * 100}%;background:#64748B"></span>
+        <div role="img" aria-label="Vote counts: ${yes} yes, ${no} no, ${present} present (abstained), ${didntVote} absent (didn't vote)" style="height:10px;background:#E2E8F0;overflow:hidden;display:flex;border-radius:2px;">
+          <span style="width:${yes / total * 100}%;background:#15803D"></span><span style="width:${no / total * 100}%;background:#B91C1C"></span>${present > 0 ? `<span style="width:${present / total * 100}%;background:#D97706"></span>` : ""}<span style="width:${didntVote / total * 100}%;background:#64748B"></span>
         </div>
         <p style="margin:0.65rem 0 0;color:var(--color-text-secondary);font-size:0.9rem;line-height:1.5;">${escapeHtml(voteSummary)}</p>
       </div>
@@ -832,13 +879,15 @@ const VotalumeUI = (function() {
 
   return {
     initCommon,
+    getVoteDisplay,
     openSearchModal,
     closeSearchModal,
     handlePortraitError,
     getSilhouetteSVG,
     escapeHtml,
     renderBillCardDetails,
-    updateTagTaxonomyLabels
+    updateTagTaxonomyLabels,
+    populateActiveTagFilter
   };
 })();
 

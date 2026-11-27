@@ -213,8 +213,8 @@ async function renderDisagreements(a, b) {
 
     // Check if they differed (e.g. Yea vs Nay)
     if (voteA !== voteB && ["Yea", "Nay"].includes(voteA) && ["Yea", "Nay"].includes(voteB)) {
-      const badgeA = voteA === "Yea" ? "badge-yea" : "badge-nay";
-      const badgeB = voteB === "Yea" ? "badge-yea" : "badge-nay";
+      const displayVoteA = VotalumeUI.getVoteDisplay(voteA);
+      const displayVoteB = VotalumeUI.getVoteDisplay(voteB);
       const tagsText = String(bill.Tags || bill.Assigned_Tags || "");
       const tags = (tagsText.match(/\[[^\]]+\]/g) || tagsText.split(/[;,]/).map((tag) => tag.trim()).filter(Boolean))
         .slice(0, 2)
@@ -228,8 +228,8 @@ async function renderDisagreements(a, b) {
           </td>
           <td style="white-space:nowrap; font-size:0.825rem;">${bill.Vote_Date}</td>
           <td><span class="badge badge-neutral">${bill.Result || "Result unavailable"}</span></td>
-          <td><span class="badge ${badgeA}">${voteA}</span></td>
-          <td><span class="badge ${badgeB}">${voteB}</span></td>
+          <td><span class="badge ${displayVoteA.badgeClass}">${VotalumeUI.escapeHtml(displayVoteA.label)}</span></td>
+          <td><span class="badge ${displayVoteB.badgeClass}">${VotalumeUI.escapeHtml(displayVoteB.label)}</span></td>
           <td>
             <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
               ${tags.map((t) => `<span class="tag-pill">${VotalumeUI.escapeHtml(t)}</span>`).join("")}

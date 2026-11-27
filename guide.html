@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tags, Scores & Methodology Explainer — Votalume</title>
-  <meta name="description" content="Complete documentation of the 73-tag legislative taxonomy, 6 composite voter indices formulas, continuous career handling, and data health changelog." />
+  <meta name="description" content="Complete documentation of Votalume's active-tag legislative taxonomy, six composite voter index formulas, continuous career handling, and data health changelog." />
   <meta name="author" content="GrayRoseCreations" />
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
 
@@ -82,7 +82,7 @@
           <kbd>⌘K</kbd>
         </button>
 
-        <a href="guide.html#health" id="header-live-sync-badge" class="live-sync-indicator">
+        <a href="guide.html#changelog" id="header-live-sync-badge" class="live-sync-indicator">
           <span class="sync-pulse"></span> Live Sync
         </a>
 
@@ -100,7 +100,7 @@
       <div style="margin-bottom: 2.5rem;">
         <h1 class="plain-label-stack"><span class="plain-label-main">How We Score Lawmakers</span><small class="plain-label-subtitle">6 Composite Accountability Indices</small></h1>
         <p style="color: var(--color-text-secondary); max-width: 820px; font-size: 1.05rem;">
-          Votalume was designed from the ground up for strict nonpartisan neutrality, mathematical precision, and full civic transparency. Explore the complete rules governing our 73 legislative policy tags, multi-chamber continuous profiles, attendance formulas, and disclosure standards.
+          Votalume was designed for nonpartisan neutrality, careful calculations, and public transparency. Explore the rules for active policy tags, multi-chamber profiles, attendance formulas, and disclosure standards.
         </p>
       </div>
 
@@ -111,17 +111,17 @@
           <a href="#indices">How We Score Lawmakers</a>
           <a href="#attendance">Attendance After Elections</a>
           <a href="#chamber-switchers">Served in House & Senate</a>
-          <a href="#financial">5. Financial Disclosure Neutrality</a>
+          <a href="#financial-neutrality">5. Financial Disclosure Neutrality</a>
           <a href="#changelog">6. Data Changelog & Health</a>
           <a href="#disclaimer">7. Nonpartisan Guarantee</a>
         </div>
       </div>
 
-      <!-- Section 1: 73-Tag Taxonomy -->
+      <!-- Section 1: Active-Tag Taxonomy -->
       <section id="taxonomy" class="card" style="margin-bottom: 2.5rem; padding: 2rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-          <h2 class="plain-label-stack" style="font-size: 1.5rem; margin: 0;"><span class="plain-label-main">Topic & Issue Guide</span><small class="plain-label-subtitle">73-Tag Legislative Taxonomy</small></h2>
-          <span id="tags-count-badge" class="badge badge-gold">73 Active Tags</span>
+          <h2 class="plain-label-stack" style="font-size: 1.5rem; margin: 0;"><span class="plain-label-main">Topic & Issue Guide</span><small class="plain-label-subtitle">Active-Tag Legislative Taxonomy</small></h2>
+          <span id="tags-count-badge" class="badge badge-gold">Active Tags</span>
         </div>
         <p style="color: var(--color-text-secondary); font-size: 0.9rem; line-height: 1.6; margin-bottom: 1.5rem;">
           Every substantive roll call is tagged along standardized dimensions. Procedural motions, cloture votes, and routine nominations are tracked for floor attendance but explicitly excluded from substantive policy index calculations.
@@ -210,27 +210,33 @@
       <section id="chamber-switchers" class="card" style="margin-bottom: 2.5rem; padding: 2rem;">
         <h2 class="plain-label-stack" style="font-size: 1.5rem; margin-bottom: 0.5rem;"><span class="plain-label-main">Served in House & Senate</span><small class="plain-label-subtitle">Cross-Chamber Career Record</small></h2>
         <p style="color: var(--color-text-secondary); font-size: 0.9rem; line-height: 1.6;">
-          When a Representative is elected to the Senate (e.g. Jim Banks, Adam Schiff, Elissa Slotkin, John Curtis), traditional databases often generate two separate profiles or report false "Not In Office" absences. Votalume unifies their career by Bioguide ID, allowing citizens to view one continuous tenure with separate chamber filter tabs and verified zero-absence transition windows.
+          When a Representative is elected to the Senate, databases may split the record or count time between chambers as an absence. Votalume links both service records by member ID and keeps House and Senate votes separate.
         </p>
       </section>
 
       <!-- Section 5: Financial Disclosures Neutrality -->
-      <section id="financial" class="card" style="margin-bottom: 2.5rem; padding: 2rem;">
+      <section id="financial-neutrality" class="card" style="margin-bottom: 2.5rem; padding: 2rem;">
+        <span id="financial"></span>
         <h2 style="font-size: 1.5rem; margin-bottom: 0.5rem;">5. Financial Disclosure & Sector Overlap Guidelines</h2>
         <p style="color: var(--color-text-secondary); font-size: 0.9rem; line-height: 1.6; margin-bottom: 1rem;">
-          Votalume adheres to the following principles to maintain nonpartisan financial reporting:
+          Votalume compares documented public disclosure text with legislative roll-call topics. A match shows overlap only; it does not show why a vote was cast.
         </p>
         <ul style="padding-left: 1.5rem; line-height: 1.8; font-size: 0.9rem; color: var(--color-text-primary);">
           <li>
-            <strong>Diversified Funds Exclusion:</strong> Broad-market index funds, ETFs, mutual funds, and federally certified qualified blind trusts are explicitly recognized and excluded from individual equity overlap tallies.
+            <strong>Sector-to-tag matching:</strong> Oil, gas, fossil fuel, energy, and electric utility terms map to the fossil fuel and renewable energy tags. Health and pharmaceutical terms map to Medicare/Medicaid, drug pricing, and insurance tags. Finance, banking, insurance, real estate, and crypto terms map to tax/deregulation, banking/consumer finance, and spending tags. Defense and aerospace map to military spending. Agriculture, crops, food retail, and ranching map to farm subsidies/nutrition. Telecom, technology, media, semiconductors, and AI map to the AI/data privacy/telecom tag.
           </li>
           <li>
-            <strong>STOCK Act Disclosures:</strong> 30-day transaction notifications are checked directly against periodic transaction reports (PTRs) filed with the House Clerk and Senate Ethics Committee.
+            <strong>Sector-aligned votes:</strong> A Yes or No roll-call vote is listed when the bill's combined summary and assigned tags match a sector named in a member's donor or asset disclosure.
           </li>
           <li>
-            <strong>Raw Overlap Tallies:</strong> We report factual counts of supportive vs. restrictive votes cast on legislation impacting sectors in which a member or their spouse holds individual equity.
+            <strong>STOCK Act timing:</strong> A neutral Sector Trade Proximity (±45 Days) label appears only when a dated trade in a matched sector is documented within 45 days of a vote. A separate filing-window badge is shown only when the disclosure data marks a late filing.
+          </li>
+          <li>
+            <strong>Asset attribution:</strong> Ownership labels are kept as stated in the records. Spouse holdings, dependent child accounts, Senate-approved Qualified Blind Trusts, and third-party managed portfolios are not described as direct personal trades by a lawmaker. Broad funds and blind trusts are identified separately.
           </li>
         </ul>
+        <p style="font-size:0.9rem;line-height:1.7;"><strong>Correlation &amp; Non-Partisan Notice:</strong> Donor and portfolio sector overlap highlights documented alignment between public FEC/STOCK Act disclosures and legislative roll-call topics. Correlation does not establish causation or improper influence.</p>
+        <p style="font-size:0.9rem;line-height:1.7;margin-bottom:0;"><strong>FEC Compliance Notice (52 U.S.C. § 30111(a)(4)):</strong> Aggregated Federal Election Commission (FEC) campaign finance data is displayed strictly for non-commercial civic reference and may not be used to solicit contributions or for any commercial purpose.</p>
       </section>
 
       <!-- Section 6: Data Changelog & Health -->
@@ -260,6 +266,13 @@
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section id="privacy" class="card" style="margin-bottom:2.5rem;padding:2rem;">
+        <h2 style="font-size:1.35rem;margin-bottom:0.5rem;">Privacy &amp; Local Storage</h2>
+        <p style="color:var(--color-text-secondary);font-size:0.9rem;line-height:1.7;margin:0;">
+          Guest preferences stay in this browser. Signed-in email addresses for quiz answers are stored in a separate, access-restricted response workbook only to prevent duplicate submissions and compute anonymized aggregate percentages. The public Quiz_Benchmarks tab contains only totals and verified voter counts. Individual quiz answers and email addresses are not shown publicly, sold, or used for solicitation. You can ask to delete your quiz data at any time using the Discrepancy or Suggestion form; choose “Privacy / quiz data deletion” and include the account email and question IDs you want removed. The privacy-safe Apps Script deployment and restricted workbook must be configured for this protection to apply.
+        </p>
       </section>
 
       <!-- Section 7: Nonpartisan Guarantee & Discrepancies -->
@@ -310,10 +323,10 @@
         <div class="footer-col">
           <h4>Methodology</h4>
           <ul>
-            <li><a href="guide.html">73-Tag Taxonomy Guide</a></li>
+            <li><a href="guide.html">Active-Tag Taxonomy Guide</a></li>
             <li><a href="guide.html#indices">6 Composite Indices Formula</a></li>
             <li><a href="guide.html#attendance">Lame-Duck Attendance Rules</a></li>
-            <li><a href="guide.html#financial">Financial Disclosures Neutrality</a></li>
+            <li><a href="guide.html#financial-neutrality">Financial Disclosures Neutrality</a></li>
             <li><a href="guide.html#changelog">Data Changelog & Health</a></li>
           </ul>
         </div>

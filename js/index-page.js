@@ -8,6 +8,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   VotalumeUI.initCommon();
   VotalumeAuth.init();
   await VotalumeData.initCoreData();
+  await VotalumeData.loadVoteLogsIfNeeded();
 
   initStatsStrip();
   window.addEventListener("votalume:data-refreshed", async () => {
@@ -53,12 +54,22 @@ function initStatsStrip() {
   setText("coverage-vote-count", stats.rollCallCount.toLocaleString());
   setText("coverage-vote-breakdown", `${stats.policyBillCount.toLocaleString()} policy bills (${stats.policyVoteCount.toLocaleString()} roll calls); ${stats.proceduralNominationVoteCount.toLocaleString()} procedural / nomination votes; ${stats.otherVoteCount.toLocaleString()} consensus / other votes`);
   setText("coverage-last-updated", formatMetadataTimestamp(meta.Last_Updated_Timestamp || stats.lastUpdated));
+  setText("top-data-status", VotalumeData.isCached() ? "Showing cached data" : "Live civic data loaded");
 }
 
 function formatMetadataTimestamp(value) {
   if (!value || value === "Not available") return "Not available";
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  return Number.isNaN(date.getTime())
+    ? "Not available"
+    : date.toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZoneName: "short"
+    });
 }
 
 function initFinderTabs() {

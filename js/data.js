@@ -9,6 +9,19 @@ const VotalumeData = (function() {
   const inFlightTabs = new Map();
   const loadedTabs = new Set();
   const loadedAt = new Map();
+  let tagsByRollCallCache = null;
+  const sectorTagRules = [
+    { pattern: /\b(?:oil|gas|fossil fuel|energy|electric utilities)\b/i, tags: ["[Energy: Fossil Fuel / Domestic Production]", "[Energy: Renewable / Climate Regulation]"] },
+    { pattern: /\b(?:health|healthcare|pharma|pharmaceuticals?|hospitals?|nursing homes?|medical)\b/i, tags: ["[Health: Medicare / Medicaid]", "[Health: Prescription Drug Pricing]", "[Health: Insurance / ACA]"] },
+    { pattern: /\b(?:finance|banking|commercial banks?|securities|investment|insurance|real estate|crypto)\b/i, tags: ["[Fiscal: Tax Cuts / Deregulation]", "[Econ: Banking / Consumer Finance]", "[Fiscal: Reduces Federal Spending]"] },
+    { pattern: /\b(?:defense|aerospace)\b/i, tags: ["[Defense: Military Spending / Procurement]"] },
+    { pattern: /\b(?:agribusiness|agriculture|crops?|food retail|ranching)\b/i, tags: ["[Ag: Farm Subsidies / Nutrition]"] },
+    { pattern: /\b(?:telecom|tech(?:nology)?|media|semiconductors?|AI)\b/i, tags: ["[Tech: AI / Data Privacy / Telecom]"] }
+  ];
+  const financialNotices = {
+    correlation: "Donor and portfolio sector overlap highlights documented alignment between public FEC/STOCK Act disclosures and legislative roll-call topics. Correlation does not establish causation or improper influence.",
+    fec: "Aggregated Federal Election Commission (FEC) campaign finance data is displayed strictly for non-commercial civic reference and may not be used to solicit contributions or for any commercial purpose."
+  };
 
   // In-memory data store for the active session
   const store = {
@@ -20,6 +33,7 @@ const VotalumeData = (function() {
     Accountability_Extras: [],
     Tag_Definitions: [],
     Quiz_Question_Bank: [],
+    Quiz_Benchmarks: [],
     Backfill_Queue: [],
     Site_Metadata: {},
     House_Votes_Log: null,
@@ -35,7 +49,7 @@ const VotalumeData = (function() {
 
   function metricText(row, keys) {
     const key = keys.find((candidate) => hasMetricValue(row?.[candidate]));
-    return key ? String(row[key]).trim() : "Not enough votes yet";
+    return key ? String(row[key]).trim() : "Pending Backfill";
   }
 
   function metricScore(row, keys) {
@@ -43,6 +57,11 @@ const VotalumeData = (function() {
     if (value === "Not enough votes yet") return null;
     const score = parseFloat(value);
     return Number.isFinite(score) ? score : null;
+  }
+
+  function hasChamberSwitchBadge(value) {
+    return /(chamber[\s_-]*switch|switcher|full\s+career|house\s*\+\s*senate)/i.test(String(value || "")) ||
+      /^(true|yes|1)$/i.test(String(value || "").trim());
   }
 
   // --- Fetching & Ingestion ---
@@ -108,6 +127,7 @@ const VotalumeData = (function() {
       const cached = getCachedTab(tabName);
       if (cached !== null) {
         store[tabName] = cached;
+          tagsByRollCallCache = null;
         loadedTabs.add(tabName);
         loadedAt.set(tabName, Date.now());
         return cached;
@@ -169,6 +189,7 @@ const VotalumeData = (function() {
       }
 
       store[tabName] = cleanData;
+      tagsByRollCallCache = null;
       loadedTabs.add(tabName);
       loadedAt.set(tabName, Date.now());
       setCachedTab(tabName, cleanData);
@@ -182,6 +203,7 @@ const VotalumeData = (function() {
       const cached = getCachedTab(tabName);
       if (cached) {
         store[tabName] = cached;
+        tagsByRollCallCache = null;
         loadedTabs.add(tabName);
         loadedAt.set(tabName, Date.now());
         return cached;
@@ -190,6 +212,7 @@ const VotalumeData = (function() {
       // Seed fallback
       const seed = getSeedFallback(tabKey);
       store[tabName] = seed;
+      tagsByRollCallCache = null;
       loadedTabs.add(tabName);
       loadedAt.set(tabName, Date.now());
       if (failOnFetchError) throw err;
@@ -221,6 +244,7 @@ const VotalumeData = (function() {
       case "VOTING_TRENDS": return seed.VOTING_TRENDS || [];
       case "ACCOUNTABILITY_EXTRAS": return seed.ACCOUNTABILITY_EXTRAS || [];
       case "QUIZ_QUESTION_BANK": return seed.QUIZ_QUESTION_BANK || [];
+      case "QUIZ_BENCHMARKS": return [];
       case "SITE_METADATA": return {
         Active_Congress: "119th Congress (2nd Session)",
         Last_Updated_Timestamp: "",
@@ -236,7 +260,7 @@ const VotalumeData = (function() {
           Severity: "Minor_Fix",
           Status: "Applied",
           Target_Scope: "Global",
-          Plain_English_Summary: "Initialized Votalume V3.4 Master Database with 12 tabs, 73-tag taxonomy, and 2025-01-03 to 2026-11-22 backfill queue."
+          Plain_English_Summary: "Initialized Votalume V3.4 Master Database with 12 tabs, active legislative tags, and 2025-01-03 to 2026-11-22 backfill queue."
         }
       ];
       default: return [];
@@ -283,6 +307,10 @@ const VotalumeData = (function() {
     return await loadTab("QUIZ_QUESTION_BANK");
   }
 
+  async function loadQuizBenchmarks() {
+    return await loadTab("QUIZ_BENCHMARKS");
+  }
+
   async function loadVotingTrends() {
     return await loadTab("VOTING_TRENDS");
   }
@@ -307,6 +335,11 @@ const VotalumeData = (function() {
     const dates = bills.map((bill) => Date.parse(bill.Vote_Date)).filter(Number.isFinite);
     const byCategory = (bill) => String(bill.Vote_Category || bill.Category || bill.Vote_Type || "").toLowerCase();
     const uniqueBillIds = (rows) => new Set(rows.map((bill) => String(bill.Bill_Number || bill.Roll_Call_ID || "").trim()).filter(Boolean)).size;
+    const loggedRollCalls = getLoggedRollCallIds();
+    const allRollCalls = new Set([
+      ...loggedRollCalls,
+      ...bills.map((bill) => String(bill.Roll_Call_ID || "").trim().toUpperCase()).filter(Boolean)
+    ]);
     const policyBills = bills.filter((bill) => byCategory(bill).includes("policy"));
     const proceduralNominationVotes = bills.filter((bill) => /procedural|nomination/.test(byCategory(bill)));
     const otherVoteCount = Math.max(0, bills.length - policyBills.length - proceduralNominationVotes.length);
@@ -343,7 +376,7 @@ const VotalumeData = (function() {
 
     return {
       billCount: uniqueBillIds(bills),
-      rollCallCount: bills.length,
+      rollCallCount: allRollCalls.size,
       policyBillCount: uniqueBillIds(policyBills),
       policyVoteCount: policyBills.length,
       proceduralNominationVoteCount: proceduralNominationVotes.length,
@@ -356,6 +389,187 @@ const VotalumeData = (function() {
       archiveTarget: "106th–119th Congress (1999–2026)",
       lastUpdated: (store.Site_Metadata || {}).Last_Updated_Timestamp || "Not available"
     };
+  }
+
+  function getLoggedRollCallIds() {
+    const ids = new Set();
+    const addId = (value) => {
+      const id = String(value || "").trim();
+      if (/^[HS]-\d{3}-\d{1,2}-\d+/i.test(id)) ids.add(id.toUpperCase());
+    };
+    [store.House_Votes_Log, store.Senate_Votes_Log].forEach((rows) => {
+      if (!Array.isArray(rows) || !rows.length) return;
+      const header = (rows[0] || []).map((value) => String(value || "").trim());
+      const rollCallColumn = header.findIndex((value) => /^(roll.?call.?id|roll.?call|vote.?id)$/i.test(value));
+      if (rollCallColumn >= 0) rows.slice(1).forEach((row) => addId(row[rollCallColumn]));
+      header.forEach(addId);
+      rows.forEach((row) => addId(row?.[0]));
+    });
+    return ids;
+  }
+
+  function getActiveTagDefinitions() {
+    return (store.Tag_Definitions || []).filter((row) =>
+      /active/i.test(`${row.House_Status || ""} ${row.Senate_Status || ""}`)
+    );
+  }
+
+  function parseTags(value) {
+    const text = String(value || "");
+    return (text.match(/\[[^\]]+\]/g) || text.split(/[;,]/))
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+  }
+
+  function getSectorTagsFromText(value) {
+    const text = String(value || "");
+    return [...new Set(sectorTagRules
+      .filter((rule) => rule.pattern.test(text))
+      .flatMap((rule) => rule.tags))];
+  }
+
+  function getSectorTagsForDisclosure(extras) {
+    return getSectorTagsFromText([
+      extras?.Top_Donor_Sectors_Display,
+      extras?.Top_Donor_Industries_And_Committee_Overlap,
+      extras?.Held_Sectors_Vote_Counts
+    ].filter(Boolean).join(" "));
+  }
+
+  function getSectorTagMatches(extras, bill) {
+    const billTags = new Set(getTagsForRollCall(bill?.Roll_Call_ID));
+    return getSectorTagsForDisclosure(extras).filter((tag) => billTags.has(tag));
+  }
+
+  function dateStamp(year, month, day) {
+    const timestamp = Date.UTC(year, month - 1, day);
+    const date = new Date(timestamp);
+    return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+      ? timestamp
+      : null;
+  }
+
+  function getDisclosureDates(value) {
+    const text = String(value || "");
+    const dates = new Set();
+    const collect = (pattern, parseMatch) => {
+      let match;
+      while ((match = pattern.exec(text)) !== null) {
+        const timestamp = parseMatch(match);
+        if (timestamp !== null) dates.add(timestamp);
+      }
+    };
+    collect(/\b(20\d{2})[-/](\d{1,2})[-/](\d{1,2})\b/g, (match) =>
+      dateStamp(Number(match[1]), Number(match[2]), Number(match[3])));
+    collect(/\b(\d{1,2})\/(\d{1,2})\/(20\d{2})\b/g, (match) =>
+      dateStamp(Number(match[3]), Number(match[1]), Number(match[2])));
+    const months = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+    collect(/\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(\d{1,2}),?\s+(20\d{2})\b/gi, (match) =>
+      dateStamp(Number(match[3]), months[match[1].slice(0, 3).toLowerCase()], Number(match[2])));
+    return [...dates];
+  }
+
+  function hasStockActTradeProximity(extras, bill, matchedTags) {
+    const stockText = String(extras?.STOCK_Act_Trades_And_Timing || "");
+    const billTimestamp = Date.parse(bill?.Vote_Date || "");
+    if (!Number.isFinite(billTimestamp)) return false;
+    const maxDistance = 45 * 24 * 60 * 60 * 1000;
+    return stockText.split(/[\n;|]+/).some((fragment) => {
+      if (/\b(?:no|none|zero)\s+(?:reported\s+)?(?:trades?|transactions?|purchases?|sales?)\b/i.test(fragment)) return false;
+      if (!/\b(?:bought|buy|purchased?|sold|sale|traded?|transaction|acquired|disposed)\b/i.test(fragment)) return false;
+      const stockTags = getSectorTagsFromText(fragment);
+      if (!matchedTags?.some((tag) => stockTags.includes(tag))) return false;
+      return getDisclosureDates(fragment).some((timestamp) => Math.abs(timestamp - billTimestamp) <= maxDistance);
+    });
+  }
+
+  function hasLateFilingFlag(extras) {
+    const fieldValue = String(
+      extras?.LATE_FILING_FLAG ||
+      extras?.Late_Filing_Flag ||
+      extras?.["LATE-FILING FLAG"] ||
+      extras?.Stock_Act_Late_Filing_Flag ||
+      ""
+    ).trim();
+    if (/^(?:no|false|0|none|n\/a|not flagged)$/i.test(fieldValue)) return false;
+    if (/^(?:true|yes|1|flagged|late[-\s]filing(?:\s+flag)?)$/i.test(fieldValue)) return true;
+    if (/\blate[-\s]filing(?:\s+flag)?\b/i.test(fieldValue)) {
+      return !/\bno\s+late[-\s]filing\b/i.test(fieldValue);
+    }
+    const stockText = String(extras?.STOCK_Act_Trades_And_Timing || "");
+    return /\blate[-\s]filing(?:\s+flag)?\b/i.test(stockText) &&
+      !/\bno\s+late[-\s]filing\b/i.test(stockText);
+  }
+
+  function getDisclosureSourceLinks(extras) {
+    const links = new Map();
+    Object.values(extras || {}).forEach((value) => {
+      const text = String(value || "");
+      const matches = text.match(/https?:\/\/[^\s)<>]+/gi) || [];
+      matches.forEach((rawUrl) => {
+        const url = rawUrl.replace(/[.,;!?]+$/, "");
+        if (!/^https?:\/\//i.test(url) || links.has(url)) return;
+        let label = url;
+        try {
+          const host = new URL(url).hostname.replace(/^www\./i, "");
+          label = host === "fec.gov" ? "FEC.gov"
+            : host.endsWith("senate.gov") ? "Senate.gov"
+              : host === "congress.gov" ? "Congress.gov"
+                : host === "legistorm.com" ? "LegiStorm"
+                  : host === "quiverquant.com" ? "Quiver Quant" : host;
+        } catch (error) {
+          return;
+        }
+        links.set(url, label);
+      });
+    });
+    return [...links.entries()].map(([url, label]) => ({ url, label }));
+  }
+
+  function getTagsForRollCall(rollCallId) {
+    const normalizedId = String(rollCallId || "").trim().toUpperCase();
+    if (!tagsByRollCallCache) {
+      tagsByRollCallCache = new Map();
+      const addTags = (id, value) => {
+        const key = String(id || "").trim().toUpperCase();
+        if (!key) return;
+        const tags = parseTags(value);
+        if (!tags.length) return;
+        const current = tagsByRollCallCache.get(key) || new Set();
+        tags.forEach((tag) => current.add(tag));
+        tagsByRollCallCache.set(key, current);
+      };
+
+      (store.Bills_Summary || []).forEach((bill) => {
+        addTags(bill.Roll_Call_ID, bill.Tags);
+        addTags(bill.Roll_Call_ID, bill.Assigned_Tags);
+      });
+      [store.House_Votes_Log, store.Senate_Votes_Log].forEach((rows) => {
+        if (!Array.isArray(rows) || !rows.length) return;
+        const header = (rows[0] || []).map((value) => String(value || "").trim());
+        const normalizedHeader = header.map((value) => value.toLowerCase().replace(/[^a-z]/g, ""));
+        const rollCallColumn = normalizedHeader.findIndex((value) => /^(rollcallid|rollcall|voteid)$/.test(value));
+        const tagColumn = normalizedHeader.findIndex((value) => /^(assignedtags|tags)$/.test(value));
+        if (rollCallColumn >= 0 && tagColumn >= 0) {
+          rows.slice(1).forEach((row) => addTags(row[rollCallColumn], row[tagColumn]));
+        }
+
+        const rollCallColumns = header.map((value, index) =>
+          /^[HS]-\d{3}-\d{1,2}-\d+/i.test(value) ? index : -1
+        ).filter((index) => index >= 0);
+        if (rollCallColumns.length) {
+          rows.slice(1).forEach((row) => {
+            if (/^(assigned_tags|tags)$/i.test(String(row?.[0] || "").trim())) {
+              rollCallColumns.forEach((column) => addTags(header[column], row[column]));
+            }
+          });
+        }
+        if (tagColumn >= 0) {
+          rows.slice(1).forEach((row) => addTags(row?.[0], row?.[tagColumn]));
+        }
+      });
+    }
+    return [...(tagsByRollCallCache.get(normalizedId) || [])];
   }
 
   async function refreshLiveData() {
@@ -381,6 +595,7 @@ const VotalumeData = (function() {
       loadedTabs.delete(tabName);
       loadedAt.delete(tabName);
     });
+    tagsByRollCallCache = null;
 
     isUsingCachedFallback = false;
     const results = await Promise.allSettled(keysToRefresh.map((key) => loadTab(key, true, true)));
@@ -417,15 +632,17 @@ const VotalumeData = (function() {
       return null;
     }
 
-    const isChamberSwitcher = !!(houseRecord && senateRecord);
     // Primary / current record is senate if currently in senate, else house
     const primary = senateRecord || houseRecord;
+    const isChamberSwitcher = !!(houseRecord && senateRecord) ||
+      hasChamberSwitchBadge(senateRecord?.Chamber_Switch_Badge) ||
+      hasChamberSwitchBadge(houseRecord?.Chamber_Switch_Badge);
 
     // Career narrative title
     let careerTitle = "";
     if (isChamberSwitcher) {
-      const senateTerm = senateRecord.Term_Window || "2025–Present";
-      const houseTerm = houseRecord.Term_Window || "Prior";
+      const senateTerm = senateRecord?.Term_Window || "Prior Senate service";
+      const houseTerm = houseRecord?.Term_Window || "Prior House service";
       careerTitle = `U.S. Senator ${senateTerm} | U.S. Representative ${houseTerm}`;
     } else if (senateRecord) {
       careerTitle = `U.S. Senator (${senateRecord.State})`;
@@ -464,9 +681,9 @@ const VotalumeData = (function() {
       regularAttendancePct: metricText(primary, ["Regular_Attendance_Pct", "Regular_Attendance"]),
       lameDuckAttendancePct: metricText(primary, ["Lame_Duck_Attendance_Pct", "Lame_Duck_Attendance"]),
       recentAttendance20Pct: metricText(primary, ["Recent_Attendance_20_Pct", "Recent_Attendance_20"]),
-      presentRatePct: primary.Present_Rate_Pct || "0.2%",
-      longestConsecutiveMissedStreak: primary.Longest_Consecutive_Missed_Streak || "0 votes",
-      decisiveLandmarkMissedCount: primary.Decisive_Landmark_Missed_Count || "0",
+      presentRatePct: metricText(primary, ["Present_Rate_Pct"]),
+      longestConsecutiveMissedStreak: metricText(primary, ["Longest_Consecutive_Missed_Streak"]),
+      decisiveLandmarkMissedCount: metricText(primary, ["Decisive_Landmark_Missed_Count"]),
 
       // Partisan & Presidential Alignment
       partyUnityPct: metricText(primary, ["Party_Unity_Pct", "Party_Unity"]),
@@ -475,9 +692,9 @@ const VotalumeData = (function() {
       presSupportInPartyN: metricText(primary, ["Pres_Support_In_Party_N"]),
       presSupportOppositionPct: metricText(primary, ["Pres_Support_Opposition_Pct", "Pres_Support_Opposition"]),
       presSupportOppositionN: metricText(primary, ["Pres_Support_Opposition_N"]),
-      voteReversalRatePct: primary.Vote_Reversal_Rate_Pct || "2.0%",
-      quarterlySwingPts: primary.Quarterly_Swing_Pts || "1.0",
-      alignmentDriftDelta: primary.Alignment_Drift_Delta || "0.0",
+      voteReversalRatePct: metricText(primary, ["Vote_Reversal_Rate_Pct"]),
+      quarterlySwingPts: metricText(primary, ["Quarterly_Swing_Pts"]),
+      alignmentDriftDelta: metricText(primary, ["Alignment_Drift_Delta"]),
 
       // 6 Composite Indices
       indices: {
@@ -535,24 +752,15 @@ const VotalumeData = (function() {
   async function getVoteCountsForBill(rollCallId) {
     const isSenate = /^S-/i.test(String(rollCallId || ""));
     const tabKey = isSenate ? "SENATE_VOTES_LOG" : "HOUSE_VOTES_LOG";
-    const rows = await loadTab(tabKey);
+    await loadTab(tabKey);
     const result = { yes: 0, no: 0, present: 0, didntVote: 0 };
-    if (!Array.isArray(rows) || !rows.length) return result;
-
-    const rollCallRow = rows.find((row) => String(row[0] || "").trim().toLowerCase() === "roll_call_id") || rows[0];
-    const voteColumn = rollCallRow.findIndex((value) => String(value || "").trim() === rollCallId);
-    if (voteColumn < 0) return result;
-
-    const memberHeader = rows.findIndex((row) => /^(member_id|memberid|bioguide_id|bioguideid)$/i.test(String(row[0] || "").trim()));
-    const firstMemberRow = memberHeader >= 0 ? memberHeader + 1 : 4;
-    rows.slice(firstMemberRow).forEach((row) => {
-      const memberId = String(row[0] || "").trim();
-      if (!/^[A-Z]\d{6}$/i.test(memberId)) return;
-      const vote = String(row[voteColumn] || "").trim().toLowerCase();
-      if (/^(yea|yes|y)$/.test(vote)) result.yes++;
-      else if (/^(nay|no|n)$/.test(vote)) result.no++;
-      else if (vote === "present") result.present++;
-      else if (/^(nv|not voting|absent|didn.t vote)$/.test(vote)) result.didntVote++;
+    const votes = await getMemberVotesForBill(rollCallId);
+    Object.values(votes).forEach((voteValue) => {
+      const vote = String(voteValue || "").trim().toLowerCase();
+      if (["yea", "yes", "voted yes"].includes(vote)) result.yes++;
+      else if (["nay", "no", "voted no"].includes(vote)) result.no++;
+      else if (["present", "present (abstained)"].includes(vote)) result.present++;
+      else if (["nv", "not voting", "absent", "absent (didn't vote)", "didn't vote", "did not vote"].includes(vote)) result.didntVote++;
     });
     return result;
   }
@@ -576,7 +784,8 @@ const VotalumeData = (function() {
       if (/^(yea|yes|y)$/i.test(vote)) return "Yea";
       if (/^(nay|no|n)$/i.test(vote)) return "Nay";
       if (/^present$/i.test(vote)) return "Present";
-      if (/^(not voting|absent)$/i.test(vote)) return "Not Voting";
+      if (/^(nv|not voting|absent|didn't vote|did not vote)$/i.test(vote)) return "Absent (Didn't Vote)";
+      if (/^not in office$/i.test(vote)) return "Not In Office (Excluded from Attendance)";
       return vote;
     };
 
@@ -598,7 +807,7 @@ const VotalumeData = (function() {
         return;
       }
 
-      const voteColumnInMatrix = header.findIndex((value) => value === rollCallId);
+      const voteColumnInMatrix = header.findIndex((value) => value.toUpperCase() === String(rollCallId).toUpperCase());
       if (voteColumnInMatrix >= 0) {
         const memberHeaderIndex = rows.findIndex((row) => /^(member_id|memberid|bioguide_id|bioguideid)$/i.test(String(row[0] || "").trim()));
         const firstMemberRow = memberHeaderIndex >= 0 ? memberHeaderIndex + 1 : 1;
@@ -629,10 +838,20 @@ const VotalumeData = (function() {
     loadTab,
     loadVoteLogsIfNeeded,
     loadQuizQuestions,
+    loadQuizBenchmarks,
     loadVotingTrends,
     loadAccountabilityExtras,
     loadChangeControlPublic,
     getCoverageStats,
+    hasChamberSwitchBadge,
+    getActiveTagDefinitions,
+    getTagsForRollCall,
+    getSectorTagsForDisclosure,
+    getSectorTagMatches,
+    hasStockActTradeProximity,
+    hasLateFilingFlag,
+    getDisclosureSourceLinks,
+    getFinancialDisclosureNotices: () => ({ ...financialNotices }),
     refreshLiveData,
     getUnifiedMemberProfile,
     getDelegation,

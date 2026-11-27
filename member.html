@@ -83,7 +83,7 @@
           <kbd>⌘K</kbd>
         </button>
 
-        <a href="guide.html#health" id="header-live-sync-badge" class="live-sync-indicator">
+        <a href="guide.html#changelog" id="header-live-sync-badge" class="live-sync-indicator">
           <span class="sync-pulse"></span> Live Sync
         </a>
 
@@ -179,7 +179,7 @@
               <div class="gauge-bar-wrapper">
                 <div id="gauge-regular-fill" class="gauge-bar-fill" style="background-color: #15803D; width: 0%;"></div>
               </div>
-              <span class="gauge-footnote">Pre-election session (excluding Not In Office)</span>
+              <span class="gauge-footnote">Pre-election session, excluding Not In Office periods from attendance</span>
             </div>
 
             <!-- Gauge 2: Lame-Duck Attendance -->
@@ -192,10 +192,10 @@
 
             <!-- Gauge 3: Active Abstention (Present) Rate -->
             <div class="gauge-card">
-              <span class="gauge-title">Active Abstention ("Present")</span>
+              <span class="gauge-title">Present (Abstained) Vote Rate</span>
               <div id="gauge-present-val" class="gauge-value">--</div>
               <div id="recent-absence-alert-container" style="margin: 0.35rem 0;"></div>
-              <span class="gauge-footnote">Recorded Present instead of Yea/Nay</span>
+              <span class="gauge-footnote">Recorded Present (Abstained) instead of voting Yes or No</span>
             </div>
 
             <!-- Gauge 4: Consecutive & Landmark Missed -->
@@ -391,63 +391,12 @@
           </div>
         </section>
 
-        <!-- Neutral Financial Disclosures & Sector Overlap Card -->
-        <section class="financial-card">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem;">
-            <div>
-              <h2 style="font-size: 1.35rem; margin: 0;">Financial Disclosures & Sector Overlap</h2>
-              <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 0.2rem;">
-                Official FEC filing audits, STOCK Act 30-day notifications, and committee jurisdiction overlap.
-              </div>
-            </div>
-            <span id="portfolio-status-badge" class="badge"></span>
-          </div>
-
-          <!-- Campaign Finance Split -->
-          <div>
-            <span class="stat-label">FEC Campaign Contribution Breakdown</span>
-            <div class="funding-split-bar">
-              <div id="seg-small-donors" class="funding-seg-small" style="width: 40%;">Small Donors 40%</div>
-              <div id="seg-large-donors" class="funding-seg-large" style="width: 40%;">Large Donors 40%</div>
-              <div id="seg-pacs" class="funding-seg-pac" style="width: 20%;">PACs 20%</div>
-            </div>
-            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--color-text-secondary);">
-              <span>● Small Individual Donors (≤$200)</span>
-              <span>● Large Individual Donors</span>
-              <span>● Political Action Committees (PACs)</span>
-            </div>
-          </div>
-
-          <!-- STOCK Act & Held Sectors -->
-          <div class="stock-act-grid">
-            <div class="stock-stat-box">
-              <span class="stat-label">STOCK Act 30-Day Flags</span>
-              <div id="stock-flags-val" style="font-weight: 700; font-size: 1.1rem; color: var(--color-civic-navy); margin-top: 0.25rem;">0 Flags</div>
-              <div style="font-size: 0.72rem; color: var(--color-text-muted); margin-top: 0.2rem;">Timely filing compliance</div>
-            </div>
-            <div class="stock-stat-box">
-              <span class="stat-label">Held Sectors Roll Calls</span>
-              <div id="held-sectors-val" style="font-weight: 700; font-size: 0.9rem; color: var(--color-civic-navy); margin-top: 0.25rem;">Audit queued</div>
-              <div style="font-size: 0.72rem; color: var(--color-text-muted); margin-top: 0.2rem;">Excludes diversified mutual funds</div>
-            </div>
-            <div class="stock-stat-box">
-              <span class="stat-label">Legislative Effectiveness & Earmarks</span>
-              <div id="effectiveness-val" style="font-weight: 600; font-size: 0.825rem; color: var(--color-civic-navy); margin-top: 0.25rem;">Disclosed</div>
-              <div style="font-size: 0.72rem; color: var(--color-text-muted); margin-top: 0.2rem;">Enacted bills & funded projects</div>
-            </div>
-          </div>
-
-          <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 1rem;">
-            <strong>Top Donor Sectors & Jurisdiction Overlap:</strong> <span id="donor-industries-val">Audited by House/Senate Ethics</span>
-          </div>
-          <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 0.35rem;">
-            <strong>State Major Industries:</strong> <span id="state-industries-val"></span>
-          </div>
-
-          <!-- Mandatory Neutrality Disclaimer -->
-          <div class="neutrality-disclaimer-box">
-            <strong>Nonpartisan Disclosure Neutrality Disclaimer:</strong> Votalume presents raw public financial disclosure records and roll-call tallies as certified by official government filings without editorial conjecture. Ownership of diversified broad-market index funds, mutual funds, and federally approved qualified blind trusts is explicitly noted and separated from direct individual corporate equities.
-          </div>
+        <section class="financial-card" aria-labelledby="financial-card-heading">
+          <div id="financial-card-content"></div>
+        </section>
+        <section class="financial-legal-notices card" aria-label="Financial disclosure notices" style="margin-top:1rem;padding:1rem;">
+          <p style="margin:0 0 0.75rem;"><strong>Correlation &amp; Non-Partisan Notice:</strong> Donor and portfolio sector overlap highlights documented alignment between public FEC/STOCK Act disclosures and legislative roll-call topics. Correlation does not establish causation or improper influence.</p>
+          <p style="margin:0;"><strong>FEC Compliance Notice (52 U.S.C. § 30111(a)(4)):</strong> Aggregated Federal Election Commission (FEC) campaign finance data is displayed strictly for non-commercial civic reference and may not be used to solicit contributions or for any commercial purpose.</p>
         </section>
 
         <!-- Searchable Roll-Call History Table -->
@@ -529,7 +478,7 @@
         <div class="footer-col">
           <h4>Methodology</h4>
           <ul>
-            <li><a href="guide.html">73-Tag Taxonomy Guide</a></li>
+            <li><a href="guide.html">Active-Tag Taxonomy Guide</a></li>
             <li><a href="guide.html#indices">6 Composite Indices Formula</a></li>
             <li><a href="guide.html#attendance">Lame-Duck Attendance Rules</a></li>
             <li><a href="guide.html#financial">Financial Disclosures Neutrality</a></li>

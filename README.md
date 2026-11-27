@@ -32,7 +32,7 @@ votalume/
 ├── parties.html                 # Party Caucus Analysis: Democrats vs. Republicans
 ├── compare.html                 # Side-by-Side Lawmaker Comparison Tool
 ├── quiz.html                    # Blind-to-Reveal Civic Alignment Quiz & Rep Match
-├── guide.html                   # 73-Tag Taxonomy, Formulas & System Changelog
+├── guide.html                   # Active Tag Taxonomy, Formulas & System Changelog
 ├── css/
 │   ├── main.css                 # Civic design system tokens, layout, header/footer
 │   ├── components.css           # Cards, gauges, badges, tables, sticky columns
@@ -74,8 +74,9 @@ Votalume pulls live CSV records directly from the Google Sheets GViz endpoint:
 | `Party_Comparison` | `&headers=1` | No | Caucus-wide unity, crossover, participation, and presidential support metrics |
 | `Voting_Trends` | `&headers=1` | No | Quarterly scores (2025-Q1 through 2026-Q1) for timeline trend graphs |
 | `Accountability_Extras` | `&headers=1` | No | FEC donation splits, STOCK Act flags, portfolio types, and held sector overlaps |
-| `Tag_Definitions` | `&headers=1` | No | Complete 73-tag legislative taxonomy categorized across 7 dimensions |
+| `Tag_Definitions` | `&headers=1` | No | Active legislative tags grouped by their plain-English category |
 | `Quiz_Question_Bank` | `&headers=1` | No | Neutral trade-off questions, provision weights, and roll-call reveal keys |
+| `Quiz_Benchmarks` | `&headers=1` | No | Public aggregate Yes/No totals and verified voter counts only |
 | `Backfill_Queue` | `&headers=1` | No | Ingestion batches and sync status tracking |
 | `Site_Metadata` | `&headers=1` | No | Active Congress session, total bills analyzed, backfill completion % |
 | `House_Votes_Log` | `&headers=0` | **Yes** | Full member-by-vote matrix for House roll calls (loaded only on detail pages) |
@@ -85,11 +86,13 @@ Votalume pulls live CSV records directly from the Google Sheets GViz endpoint:
 > [!NOTE]
 > **Data Resilience**: If a live Google Sheet tab is empty or synchronizing, Votalume automatically falls back to the embedded baseline seed dataset (`js/seed-data.js`) while displaying a subtle `"Showing cached data"` status banner.
 
+Signed-in quiz submissions are stored in a separate, access-restricted spreadsheet. The public master workbook must not contain a `Quiz_Responses` tab. Configure the Apps Script properties `PRIVATE_QUIZ_SPREADSHEET_ID` and `FIREBASE_WEB_API_KEY`, then deploy the updated webhook in `google-apps-script-discrepancy-reports.js`. The handler verifies Firebase ID tokens, keeps one private response per user and question, and publishes only aggregate counts to `Quiz_Benchmarks`. Before deployment, privately migrate any existing raw response records and remove the old public `Quiz_Responses` tab.
+
 ---
 
 ## 🔒 Firebase Authentication & Cloud Firestore Security Rules
 
-Votalume uses Firebase Authentication (Email/Password + Google Sign-In) and Cloud Firestore to persist citizen preferences (saved Home District, bookmarked lawmakers, and quarterly quiz responses). Unauthenticated visitors browse with full functionality via `localStorage`.
+Votalume uses Firebase Authentication (Email/Password + Google Sign-In) and Cloud Firestore to persist citizen preferences (saved Home District and bookmarked lawmakers). Unauthenticated visitors browse with full functionality via `localStorage`. Quiz responses are not stored in the user's public profile or published individually.
 
 ### Strict Cloud Firestore Security Rules
 Deploy the following rules in your Firebase Console (`votalume-civic`):
@@ -113,8 +116,7 @@ service cloud.firestore {
         && request.auth.uid == userId
         && request.resource.data.homeState is string
         && request.resource.data.homeDistrict is string
-        && request.resource.data.bookmarkedLawmakers is list
-        && request.resource.data.quizResponses is map;
+        && request.resource.data.bookmarkedLawmakers is list;
     }
   }
 }

@@ -82,7 +82,7 @@
           <kbd>⌘K</kbd>
         </button>
 
-        <a href="guide.html#health" id="header-live-sync-badge" class="live-sync-indicator">
+        <a href="guide.html#changelog" id="header-live-sync-badge" class="live-sync-indicator">
           <span class="sync-pulse"></span> Live Sync
         </a>
 
@@ -98,29 +98,50 @@
       
       <!-- Quiz Header -->
       <div style="text-align: center; margin-bottom: 2rem;">
-        <h1>Blind-to-Reveal Civic Alignment Quiz</h1>
-        <p style="color: var(--color-text-secondary); max-width: 680px; margin: 0 auto; font-size: 1.05rem;">
-          Vote blindly on real legislative questions without party cues, bill titles, or sponsors. Once you vote, the actual Congressional roll call is revealed, comparing your vote directly with your own House Representative and two Senators.
+        <h1>See Which Lawmakers Actually Vote Like You</h1>
+        <p style="color: var(--color-text-secondary); max-width: 680px; margin: 0 auto; font-size: 1rem;">
+          Policy Alignment Quiz • Based on Real Congressional Roll Calls
         </p>
       </div>
 
-      <!-- Mode & Quarter Selector -->
-      <div class="card" style="margin-bottom: 2rem; padding: 1.25rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-          <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <label class="form-label" style="margin: 0;">Quiz Mode:</label>
-            <select id="quiz-mode-select" class="form-select" style="padding: 0.35rem 0.65rem;">
-              <option value="pulse">This Week in Congress (Pulse Quiz)</option>
-              <option value="full">Full Alignment Match (All Key Bills)</option>
-              <option value="archive">Issue-by-Issue Archive</option>
-            </select>
-          </div>
-
-          <div style="font-size: 0.8rem; color: var(--color-text-muted);">
-            <span class="badge badge-neutral">Quarterly Cooldown Active</span> Responses saved to personal timeline
-          </div>
+      <section class="card quiz-mode-picker" aria-labelledby="quiz-mode-heading">
+        <h2 id="quiz-mode-heading">Choose a quiz</h2>
+        <fieldset id="quiz-mode-options">
+          <legend class="sr-only">Quiz mode</legend>
+          <label class="quiz-mode-option">
+            <input type="radio" name="quiz-mode" value="latest" checked />
+            <span><strong>Latest Votes (Most Recent 5)</strong><span>Start with the five latest policy votes.</span></span>
+          </label>
+          <label class="quiz-mode-option">
+            <input type="radio" name="quiz-mode" value="landmark" />
+            <span><strong>Landmark &amp; Controversial Votes</strong><span>Explore close, divided, or major policy votes.</span></span>
+          </label>
+          <label class="quiz-mode-option">
+            <input type="radio" name="quiz-mode" value="full" />
+            <span><strong>Full Policy Quiz (All Questions)</strong><span>Choose how many questions to answer.</span></span>
+          </label>
+        </fieldset>
+        <div id="full-quiz-options" class="quiz-full-options" hidden>
+          <label for="quiz-length-select">Quiz length</label>
+          <select id="quiz-length-select" class="form-select">
+            <option value="10">10 Questions</option>
+            <option value="20">20 Questions</option>
+            <option value="all">All Questions</option>
+          </select>
+          <label class="quiz-shuffle-option">
+            <input id="quiz-shuffle-toggle" type="checkbox" checked />
+            Shuffle question order
+          </label>
         </div>
-      </div>
+        <div class="quiz-mode-footer">
+          <span id="landmark-question-count" class="badge badge-neutral" aria-live="polite">Landmark &amp; Controversial Showdowns: 0 questions</span>
+          <button id="btn-start-quiz" class="btn btn-primary" type="button">Start Latest Votes</button>
+        </div>
+      </section>
+
+      <p id="quiz-signin-prompt" class="card" role="note" style="padding:0.85rem 1rem;margin:0 0 1rem;color:var(--color-text-secondary);" hidden>
+        Sign in with your email to save your answers and contribute to community vote benchmarks.
+      </p>
 
       <!-- Quiz Stage: Active Question Card -->
       <div id="quiz-card-stage" class="quiz-card">
@@ -128,8 +149,10 @@
           <span id="quiz-progress-badge" class="badge badge-gold">Question 1 of 5</span>
           <span id="quiz-issue-domain-badge" class="badge badge-neutral">Energy & Environment</span>
         </div>
+        <p id="quiz-question-date" class="quiz-question-date"></p>
+        <span id="quiz-landmark-badge" class="badge badge-gold" hidden>Landmark &amp; Controversial Showdown</span>
 
-        <div style="font-size: 0.825rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted);">
+        <div class="quiz-prompt-label" style="text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-secondary);">
           Policy Question (Blind Evaluation)
         </div>
 
@@ -140,12 +163,14 @@
         <!-- Vote Action Buttons -->
         <div id="quiz-buttons-row" class="quiz-actions">
           <button id="btn-quiz-yea" class="btn btn-primary btn-quiz-vote" style="background-color: #15803D; border-color: #15803D;">
-            ✓ Vote Yea (In Favor)
+            ✓ Vote Yes (In Favor)
           </button>
           <button id="btn-quiz-nay" class="btn btn-primary btn-quiz-vote" style="background-color: #B91C1C; border-color: #B91C1C;">
-            ✕ Vote Nay (Opposed)
+            ✕ Vote No (Opposed)
           </button>
+          <button id="btn-quiz-skip" class="btn btn-secondary btn-quiz-vote" type="button">Skip</button>
         </div>
+        <p id="quiz-save-status" role="status" aria-live="polite" style="margin:0.75rem 0;color:var(--color-text-secondary);"></p>
 
         <!-- Reveal Box (Initially Hidden) -->
         <div id="quiz-reveal-box" class="quiz-reveal-box" style="display: none;">
@@ -155,7 +180,10 @@
           </div>
 
           <h3 id="reveal-bill-title" style="font-size: 1.25rem; margin-bottom: 0.5rem; color: var(--color-civic-navy);"></h3>
-          <p id="reveal-bill-summary" style="font-size: 0.9rem; color: var(--color-text-secondary); line-height: 1.6; margin-bottom: 1rem;"></p>
+          <p id="reveal-bill-summary" style="font-size: 1rem; color: var(--color-text-secondary); line-height: 1.6; margin-bottom: 1rem;"></p>
+          <p id="reveal-bill-date" class="quiz-reveal-date"></p>
+          <div id="quiz-community-benchmark" class="card" style="padding:0.85rem 1rem;margin:0 0 1rem;background:#F8FAFC;" aria-live="polite"></div>
+          <div id="reveal-lawmakers-votes" class="quiz-lawmakers-votes" aria-live="polite"></div>
 
           <div style="display: flex; gap: 0.35rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
             <div id="reveal-tags-list" style="display: flex; gap: 0.35rem; flex-wrap: wrap;"></div>
@@ -173,8 +201,8 @@
         <div class="card" style="text-align: center; padding: 2.5rem; margin-bottom: 2rem;">
           <span class="badge badge-gold" style="margin-bottom: 0.5rem;">Alignment Results Complete</span>
           <h2 style="font-size: 1.85rem; margin-bottom: 1rem;">Your Congressional Alignment Summary</h2>
-          <p style="color: var(--color-text-secondary); max-width: 600px; margin: 0 auto 2rem auto; font-size: 0.95rem;">
-            Based on your votes on actual legislation weighted by economic and constitutional provisions.
+          <p style="color: var(--color-text-secondary); max-width: 600px; margin: 0 auto 2rem auto; font-size: 1rem;">
+            Based on your answers and the recorded votes on these policy questions. Provision weights are included in each alignment score.
           </p>
 
           <!-- Caucus Match Bars -->
@@ -190,6 +218,7 @@
             </div>
           </div>
 
+          <div id="pinned-lawmakers-alignment" class="quiz-pinned-alignment"></div>
           <button id="btn-retake-quiz" class="btn btn-secondary btn-sm">Retake Quiz</button>
         </div>
 
@@ -274,7 +303,7 @@
         <div class="footer-col">
           <h4>Methodology</h4>
           <ul>
-            <li><a href="guide.html">73-Tag Taxonomy Guide</a></li>
+            <li><a href="guide.html">Active-Tag Taxonomy Guide</a></li>
             <li><a href="guide.html#indices">6 Composite Indices Formula</a></li>
             <li><a href="guide.html#attendance">Lame-Duck Attendance Rules</a></li>
             <li><a href="guide.html#financial">Financial Disclosures Neutrality</a></li>

@@ -38,9 +38,14 @@ const VotalumeCharts = (function() {
     quarters.forEach((q) => {
       const row = (trendsData || []).find((t) => t.Calendar_Quarter === q);
       if (row) {
-        econData.push(parseFloat(row.Economic_Fiscal_Score) || 50);
-        socialData.push(parseFloat(row.Social_Rights_Score) || 50);
-        secData.push(parseFloat(row.Security_Foreign_Score) || 50);
+        const score = (value) => {
+          if (value === null || value === undefined || String(value).trim() === "") return null;
+          const parsed = Number.parseFloat(String(value).replace("%", "").trim());
+          return Number.isFinite(parsed) ? parsed : null;
+        };
+        econData.push(score(row.Economic_Fiscal_Score));
+        socialData.push(score(row.Social_Rights_Score));
+        secData.push(score(row.Security_Foreign_Score));
       } else {
         // Fallback default smooth trend
         econData.push(null);
@@ -83,10 +88,18 @@ const VotalumeCharts = (function() {
     if (userResponses && Object.keys(userResponses).length > 0) {
       const userScores = quarters.map((q) => {
         // Compute user average score in this quarter
-        const qResponses = Object.values(userResponses).filter((r) => r.quarter === q);
+        const qResponses = Object.values(userResponses).filter((r) =>
+          r.quarter === q && (r.answer === "Yea" || r.answer === "Nay")
+        );
         if (!qResponses.length) return null;
-        const yeas = qResponses.filter((r) => r.answer === "Yea").length;
-        return Math.round((yeas / qResponses.length) * 100);
+        const weight = (response) => {
+          const value = Number(response.weight);
+          return Number.isFinite(value) && value >= 0 ? value : 1;
+        };
+        const total = qResponses.reduce((sum, response) => sum + weight(response), 0);
+        const yeaWeight = qResponses.reduce((sum, response) =>
+          sum + (response.answer === "Yea" ? weight(response) : 0), 0);
+        return total ? Math.round((yeaWeight / total) * 100) : null;
       });
 
       if (userScores.some((s) => s !== null)) {

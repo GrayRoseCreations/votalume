@@ -93,13 +93,11 @@ const VotalumeAuth = (function() {
           homeDistrict: cloudData.homeDistrict || userProfileData.homeDistrict || "",
           congressMapEra: cloudData.congressMapEra || userProfileData.congressMapEra || "119th",
           bookmarkedLawmakers: Array.from(new Set([...(cloudData.bookmarkedLawmakers || []), ...(userProfileData.bookmarkedLawmakers || [])])),
-          quizResponses: { ...(cloudData.quizResponses || {}), ...(userProfileData.quizResponses || {}) }
+          quizResponses: { ...(userProfileData.quizResponses || {}) }
         };
-        // Save back merged state
-        await docRef.set(userProfileData, { merge: true });
+        await docRef.set(getCloudProfileData());
       } else {
-        // Create initial cloud document with guest data
-        await docRef.set(userProfileData);
+        await docRef.set(getCloudProfileData());
       }
       saveGuestData();
     } catch (err) {
@@ -111,12 +109,18 @@ const VotalumeAuth = (function() {
     saveGuestData();
     if (currentUser && db) {
       try {
-        await db.collection("users").doc(currentUser.uid).set(userProfileData, { merge: true });
+        await db.collection("users").doc(currentUser.uid).set(getCloudProfileData());
       } catch (err) {
         console.warn("[Votalume Auth] Firestore save error:", err);
       }
     }
     notifyListeners();
+  }
+
+  function getCloudProfileData() {
+    const profile = { ...userProfileData };
+    delete profile.quizResponses;
+    return profile;
   }
 
   // --- Auth Actions ---

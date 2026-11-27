@@ -162,7 +162,9 @@ async function loadAndRenderMember(memberId) {
 
   // How Often They Change
   document.getElementById("vote-reversal-val").textContent = profile.voteReversalRatePct;
-  document.getElementById("quarterly-shift-val").textContent = `${profile.quarterlySwingPts} pts`;
+  document.getElementById("quarterly-shift-val").textContent = profile.quarterlySwingPts === "Pending Backfill"
+    ? "Pending Backfill"
+    : `${profile.quarterlySwingPts} pts`;
   document.getElementById("alignment-drift-val").textContent = `Net Drift: ${profile.alignmentDriftDelta}`;
 
   // Chart.js Quarterly Voting Shift Graph
@@ -170,7 +172,7 @@ async function loadAndRenderMember(memberId) {
   VotalumeCharts.renderQuarterlyShiftChart("quarterly-shift-chart", profile.trends, userResponses);
 
   // --- Financial Disclosures & Sector Overlap Card ---
-  renderFinancialCard(profile);
+  await renderFinancialCard(profile);
 
   // --- Roll-Call History Table ---
   await renderRollCallsTable(profile.memberId);
@@ -183,11 +185,11 @@ function renderIndexCard(prefix, data) {
 
   const hasScore = Number.isFinite(data.score);
   if (scoreEl) {
-    scoreEl.textContent = hasScore ? `${Math.round(data.score)}%` : "Not enough votes yet";
+    scoreEl.textContent = hasScore ? `${Math.round(data.score)}%` : "Pending Backfill";
     scoreEl.style.fontSize = hasScore ? "" : "0.9rem";
     scoreEl.style.fontFamily = hasScore ? "" : "inherit";
   }
-  if (sampleEl) sampleEl.textContent = data.n === "Not enough votes yet" ? data.n : `n = ${data.n}`;
+  if (sampleEl) sampleEl.textContent = data.n === "Pending Backfill" ? data.n : `n = ${data.n}`;
   if (barEl) barEl.style.width = `${hasScore ? Math.max(0, Math.min(data.score, 100)) : 0}%`;
 }
 
@@ -196,50 +198,99 @@ function parsePercent(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function renderFinancialCard(profile) {
+async function renderFinancialCard(profile) {
   const extras = profile.extras || {};
-  const financialCard = document.querySelector(".financial-card");
+  const content = document.getElementById("financial-card-content");
   if (!Object.keys(extras).length) {
-    if (financialCard) financialCard.style.display = "none";
+    if (content) {
+      content.innerHTML = `
+        <h2 id="financial-card-heading" style="font-size:1.35rem;margin:0 0 0.75rem;">Financial Disclosures &amp; Sector Overlap</h2>
+        <p style="margin:0;">Financial &amp; FEC sector audit queued for upcoming update.</p>
+      `;
+    }
     return;
   }
-  if (financialCard) financialCard.style.display = "block";
-  const portfolioBadge = document.getElementById("portfolio-status-badge");
-  const portfolioStatus = extras.Portfolio_Disclosure_Status || "Diversified Funds / Blind Trust Only";
+  await VotalumeData.loadVoteLogsIfNeeded();
+  const bills = await VotalumeData.getAllBills();
+  const voteMaps = await Promise.all(bills.map((bill) => VotalumeData.getMemberVotesForBill(bill.Roll_Call_ID)));
+  const memberId = String(profile.memberId || "").toUpperCase();
+  const alignedVotes = bills.map((bill, index) => {
+    const matches = VotalumeData.getSectorTagMatches(extras, bill);
+    const votes = voteMaps[index] || {};
+    const vote = votes[memberId] || votes[memberId.toLowerCase()];
+    const normalizedVote = String(vote || "").trim().toLowerCase();
+    if (!matches.length || (normalizedVote !== "yea" && normalizedVote !== "yes" && normalizedVote !== "nay" && normalizedVote !== "no")) return null;
+    return { bill, tags: matches, vote: normalizedVote === "yea" || normalizedVote === "yes" ? "Voted Yes" : "Voted No" };
+  }).filter(Boolean);
 
-  if (portfolioBadge) {
-    portfolioBadge.textContent = portfolioStatus;
-    if (portfolioStatus.toLowerCase().includes("individual corporate")) {
-      portfolioBadge.className = "badge badge-alert";
-    } else {
-      portfolioBadge.className = "badge badge-gold";
-    }
+  const escape = VotalumeUI.escapeHtml;
+  const field = (value) => escape(String(value || "").trim() || "Not provided");
+  const auditDate = String(extras.Last_Accountability_Audit || "").trim();
+  const parsedAuditDate = auditDate ? new Date(auditDate) : null;
+  const auditLabel = parsedAuditDate && Number.isFinite(parsedAuditDate.getTime())
+    ? `Audited ${parsedAuditDate.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`
+    : auditDate ? `Audit date: ${auditDate}` : "Audit date not provided";
+  const sources = VotalumeData.getDisclosureSourceLinks(extras);
+  const sourceLinks = sources.length
+    ? `<p style="margin:0.6rem 0 0;"><strong>Public sources:</strong> ${sources.map(({ url, label }) => `<a href="${escape(url)}" target="_blank" rel="noopener noreferrer">${escape(label)} ↗</a>`).join(" · ")}</p>`
+    : "";
+  const lateFlag = VotalumeData.hasLateFilingFlag(extras)
+    ? '<span class="badge" style="background:#FEF3C7;color:#92400E;">Disclosed After 45-Day STOCK Act Reporting Window</span>'
+    : "";
+  const voteCards = alignedVotes.length ? alignedVotes.map(({ bill, tags, vote }) => {
+    const tagLinks = tags.map((tag) =>
+      `<a class="tag-pill" href="bills.html?tag=${encodeURIComponent(tag)}">${escape(VotalumeData.getFriendlyTagLabel(tag))}</a>`
+    ).join(" ");
+    const proximity = VotalumeData.hasStockActTradeProximity(extras, bill, tags)
+      ? '<span class="badge badge-neutral">Sector Trade Proximity (±45 Days)</span>' : "";
+    return `
+      <article class="card" style="padding:1rem;margin:0.75rem 0;">
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+          <strong>${escape(bill.Bill_Number || bill.Roll_Call_ID || "Roll call")}</strong>
+          <span>${escape(bill.Vote_Date || "Date not provided")}</span>
+          <span class="badge ${vote === "Voted Yes" ? "badge-yea" : "badge-nay"}">${vote}</span>
+          ${proximity}
+        </div>
+        <h3 style="margin:0.5rem 0;">${escape(bill.Plain_English_Title || bill.Bill_Title || "Bill title not provided")}</h3>
+        <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">${tagLinks}</div>
+        <section aria-label="Citizen impact and trade-off" style="margin-top:0.75rem;padding:0.85rem;background:#F8FAFC;border-radius:0.5rem;">
+          <h4 style="margin:0 0 0.65rem;">Citizen Impact &amp; Trade-Off</h4>
+          <p style="margin:0 0 0.6rem;"><strong>${field(bill.Who_It_Affects)}</strong> • ${field(bill.Income_Impact_Direction)}</p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0.75rem;">
+            <p style="margin:0;"><strong>Potential Benefit (What You Gain):</strong><br>${field(bill.What_You_Gain)}</p>
+            <p style="margin:0;"><strong>Potential Cost / Trade-Off to Citizens:</strong><br>${field(bill.What_You_Lose_Or_Pay)}</p>
+          </div>
+        </section>
+      </article>
+    `;
+  }).join("") : "<p>No sector-aligned Yes/No votes are available for this member in the loaded roll-call records.</p>";
+
+  if (content) {
+    content.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.75rem;flex-wrap:wrap;margin-bottom:1rem;">
+        <div>
+          <h2 id="financial-card-heading" style="font-size:1.35rem;margin:0;">Financial Disclosures &amp; Sector Overlap</h2>
+          <p style="margin:0.3rem 0 0;color:var(--color-text-muted);">${escape(auditLabel)}</p>
+        </div>
+        <span class="badge badge-neutral">${field(extras.Portfolio_Disclosure_Status)}</span>
+        ${lateFlag}
+      </div>
+      <div class="stock-act-grid">
+        <div class="stock-stat-box"><strong>Funding Source Split (Individual vs. PAC)</strong><p>${field(extras.Funding_Source_Split)}</p></div>
+        <div class="stock-stat-box"><strong>Top Donor Sectors</strong><p>${field(extras.Top_Donor_Sectors_Display)}</p></div>
+        <div class="stock-stat-box"><strong>Sponsored Travel &amp; Outside Roles</strong><p>${field(extras.Sponsored_Travel_And_Outside_Roles)}</p></div>
+      </div>
+      <div class="card" style="margin-top:0.75rem;padding:1rem;">
+        <h3 style="margin:0 0 0.5rem;">STOCK Act &amp; Asset Attribution</h3>
+        <p style="margin:0 0 0.65rem;"><strong>Held sectors and related roll-call counts:</strong><br>${field(extras.Held_Sectors_Vote_Counts)}</p>
+        <p style="margin:0;"><strong>STOCK Act trades and timing:</strong><br>${field(extras.STOCK_Act_Trades_And_Timing)}</p>
+        ${sourceLinks}
+      </div>
+      <h3 style="margin:1.25rem 0 0.5rem;">Sector-Aligned Votes &amp; Citizen Trade-Off Ledger</h3>
+      <p style="margin:0;color:var(--color-text-secondary);">Sector labels match disclosure text to substantive bill tags; vote overlap alone does not establish a relationship.</p>
+      ${voteCards}
+    `;
   }
-
-  // Donor breakdown parse
-  const fundingText = extras.Funding_Source_Split || "Small Donors (≤$200): 40% | Large Donors: 40% | PACs: 20%";
-  const matchSmall = fundingText.match(/Small Donors[^:]*:\s*(\d+)%/i);
-  const matchLarge = fundingText.match(/Large Donors[^:]*:\s*(\d+)%/i);
-  const matchPac = fundingText.match(/PACs[^:]*:\s*(\d+)%/i);
-
-  const smallPct = matchSmall ? parseInt(matchSmall[1]) : 40;
-  const largePct = matchLarge ? parseInt(matchLarge[1]) : 40;
-  const pacPct = matchPac ? parseInt(matchPac[1]) : 20;
-
-  const segSmall = document.getElementById("seg-small-donors");
-  const segLarge = document.getElementById("seg-large-donors");
-  const segPac = document.getElementById("seg-pacs");
-
-  if (segSmall) { segSmall.style.width = `${smallPct}%`; segSmall.textContent = `Small ${smallPct}%`; }
-  if (segLarge) { segLarge.style.width = `${largePct}%`; segLarge.textContent = `Large ${largePct}%`; }
-  if (segPac) { segPac.style.width = `${pacPct}%`; segPac.textContent = `PACs ${pacPct}%`; }
-
-  // STOCK Act & Overlap
-  document.getElementById("stock-flags-val").textContent = extras.STOCK_Act_Trades_And_Timing || "0 30-Day Trade-to-Vote Flags | 0 Late Filings";
-  document.getElementById("held-sectors-val").textContent = extras.Held_Sectors_Vote_Counts || "Audit queued (excl. index funds)";
-  document.getElementById("effectiveness-val").textContent = extras.Legislative_Effectiveness_And_Earmarks || "Bills Introduced: 42 | Earmarks Disclosed";
-  document.getElementById("donor-industries-val").textContent = extras.Top_Donor_Industries_And_Committee_Overlap || "Ethics certified disclosure";
-  document.getElementById("state-industries-val").textContent = profile.stateMajorIndustries || "Diversified regional economic base";
 }
 
 async function renderRollCallsTable(memberId) {
@@ -269,7 +320,7 @@ async function renderRollCallsTable(memberId) {
       const votesMap = votesByRollCall.get(b.Roll_Call_ID) || {};
       const memberVote = votesMap[String(memberId).toUpperCase()] || "Not recorded";
 
-      const voteBadgeClass = memberVote === "Yea" ? "badge-yea" : memberVote === "Nay" ? "badge-nay" : memberVote === "Present" ? "badge-present" : "badge-neutral";
+      const voteDisplay = VotalumeUI.getVoteDisplay(memberVote);
       const tagsText = String(b.Tags || b.Assigned_Tags || "");
       const tags = (tagsText.match(/\[[^\]]+\]/g) || tagsText.split(/[;,]/).map((tag) => tag.trim()).filter(Boolean))
         .slice(0, 2)
@@ -286,7 +337,7 @@ async function renderRollCallsTable(memberId) {
           <td><span class="badge badge-neutral">${b.Chamber}</span></td>
           <td style="font-size: 0.825rem; white-space: nowrap;">${b.Vote_Date}</td>
           <td><span class="badge badge-neutral">${b.Result || "Result unavailable"}</span></td>
-          <td><span class="badge ${voteBadgeClass}">${memberVote}</span></td>
+          <td><span class="badge ${voteDisplay.badgeClass}">${VotalumeUI.escapeHtml(voteDisplay.label)}</span></td>
           <td>
             <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
               ${tags.map((t) => `<span class="tag-pill">${VotalumeUI.escapeHtml(t)}</span>`).join("")}
